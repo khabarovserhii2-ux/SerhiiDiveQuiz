@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Serhii's Dive Quizz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#04101f;color:#dff3ff;font-family:'Pixelify Sans',ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em}
+#app{position:fixed;inset:0;overflow:hidden}
+#cv{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
+#ov{position:absolute;left:0;top:0;pointer-events:none}
+#app::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,.07) 2px 4px)}
+.lab{font-family:'Silkscreen',monospace;text-transform:uppercase;letter-spacing:.3em;font-size:11px;color:#6f93ad}
+
+/* pixel boxes */
+.px{--c:#2f7aa8;--bg:#071326;position:relative;background:var(--c);padding:3px;clip-path:polygon(0 6px,3px 6px,3px 3px,6px 3px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 3px,calc(100% - 3px) 3px,calc(100% - 3px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 3px) calc(100% - 6px),calc(100% - 3px) calc(100% - 3px),calc(100% - 6px) calc(100% - 3px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 3px),3px calc(100% - 3px),3px calc(100% - 6px),0 calc(100% - 6px))}
+.px>.in{background:var(--bg);height:100%;clip-path:polygon(0 3px,3px 3px,3px 0,calc(100% - 3px) 0,calc(100% - 3px) 3px,100% 3px,100% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 100%,3px 100%,3px calc(100% - 3px),0 calc(100% - 3px))}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;z-index:5;padding:calc(10px + env(safe-area-inset-top)) 12px 0;pointer-events:none}
+#hudrow,#icons{max-width:980px;margin-left:auto;margin-right:auto}
+#hudrow{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.stat{min-width:104px;max-width:36vw}
+.stat .in{padding:9px 14px 8px}
+.stat .v{font-size:clamp(26px,7vw,36px);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;margin-top:2px}
+#dv{color:#52e1ff}#sv{color:#ff5f8a;text-align:right}
+#sc .lab{text-align:right}
+#prog{text-align:center;padding-top:8px}
+#sq{display:flex;gap:5px;justify-content:center}
+#sq i{display:block;width:clamp(16px,4.6vw,24px);height:clamp(16px,4.6vw,24px);background:#0a1936;border:3px solid #20407a}
+#sq i.cur{background:#ff5f8a;border-color:#2a0d1a}
+#sq i.done{border-color:#05101f}
+#plab{margin-top:6px;font-size:10px}
+#icons{display:flex;justify-content:space-between;margin-top:10px}
+.ibtn{pointer-events:auto;width:54px;height:46px;cursor:pointer;--c:#4a6580;--bg:#243a52;border:0;padding:3px;font:inherit}
+.ibtn .in{display:grid;place-items:center;font-size:22px;color:#dff3ff;line-height:1}
+.ibtn:active{filter:brightness(1.3)}
+body.menu #hudrow>*:not(#icons),body.menu #prog{visibility:hidden}
+
+/* question box */
+#qbox{position:absolute;left:50%;transform:translateX(-50%);top:max(158px,23%);width:min(94%,640px);z-index:4;--c:#38566f;--bg:rgba(5,14,32,.88)}
+#qbox .in{padding:16px 18px 14px}
+#qlab{font-family:'Silkscreen',monospace;letter-spacing:.34em;font-size:12px;color:#ff5f8a}
+#qtxt{font-size:clamp(22px,6.2vw,34px);font-weight:600;line-height:1.18;margin:10px 0 12px;color:#f2fbff}
+#qhint{font-size:13px;color:#7fa3bd;letter-spacing:.12em}
+#qtxt .ok{color:#7dffb0}#qtxt .bad{color:#ff7a88}
+#qtxt small{display:block;font-size:.5em;font-weight:400;margin-top:6px;letter-spacing:.08em}
+body.menu #qbox,body.over #qbox{display:none}
+
+/* toasts */
+#toast{position:absolute;left:50%;top:50%;transform:translate(-50%,0);z-index:6;pointer-events:none;opacity:0;transition:opacity .3s,transform .3s;text-align:center;font-family:'Silkscreen',monospace;font-size:13px;letter-spacing:.2em;padding:8px 14px;background:rgba(4,14,30,.85);border:3px solid #52e1ff;color:#bff3ff;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,-8px)}
+#gain{position:absolute;z-index:6;pointer-events:none;font-size:30px;font-weight:700;color:#7dffb0;text-shadow:3px 3px 0 #04301c;opacity:0}
+#gain.go{animation:fl 1.6s ease-out forwards}
+@keyframes fl{0%{opacity:0;transform:translate(-50%,10px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-70px)}}
+
+/* bottom bar */
+#bar{position:absolute;left:0;right:0;bottom:0;margin:0 auto;width:min(100%,780px);z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px calc(14px + env(safe-area-inset-bottom))}
+#bar::before{content:'';position:fixed;left:0;right:0;bottom:0;height:150px;z-index:-1;pointer-events:none;background:linear-gradient(to bottom,transparent,rgba(2,8,18,.85) 45%)}
+body.menu #bar,body.over #bar{display:none}
+#dial{flex:none;width:68px;height:68px;border-radius:50%;background:conic-gradient(#3de0ff calc(var(--p,100)*1%),#0a1830 0);display:grid;place-items:center;border:3px solid #17406a}
+#dial span{width:50px;height:50px;border-radius:50%;background:#04101f;display:grid;place-items:center;font-size:24px;font-weight:700;color:#52e1ff;font-variant-numeric:tabular-nums}
+#dial.low{background:conic-gradient(#ff5f6a calc(var(--p,100)*1%),#0a1830 0)}#dial.low span{color:#ff7a88}
+#form{flex:1;display:flex;gap:10px;align-items:stretch;min-width:0}
+#iw{flex:1;min-width:0}
+#iw .px{--c:#3de0ff;--bg:#050f22}
+#ans{width:100%;height:100%;min-height:50px;border:0;outline:0;background:transparent;color:#eaf9ff;font:inherit;font-size:clamp(18px,5vw,24px);padding:10px 12px;letter-spacing:.06em}
+#ans::placeholder{color:#4f7189}
+#tbar{height:5px;background:#3de0ff;margin-top:6px;width:100%;transform-origin:left}
+#tbar.low{background:#ff5f6a}
+#go{flex:none;width:clamp(92px,26vw,130px);cursor:pointer;--c:#ff5f8a;--bg:#7d2549;border:0;padding:3px;font:inherit}
+#go .in{display:grid;place-items:center;font-family:'Silkscreen',monospace;font-weight:700;font-size:clamp(15px,4.3vw,20px);letter-spacing:.3em;color:#14060d;background:#ff5f8a;padding-left:.3em}
+#go:disabled{filter:grayscale(.8) brightness(.6);cursor:default}
+#go:active:not(:disabled){filter:brightness(1.2)}
+
+/* overlays */
+.scr{position:absolute;inset:0;z-index:7;display:none;overflow:auto;-webkit-overflow-scrolling:touch}
+.scr.on{display:block}
+#menu{pointer-events:none}
+#menu>*{pointer-events:auto}
+#mwrap{min-height:100%;display:flex;flex-direction:column;align-items:center;padding:calc(80px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+#logo{font-family:'Silkscreen',monospace;font-weight:700;font-size:clamp(40px,13.5vw,100px);color:#fff;letter-spacing:.06em;line-height:1;margin-top:clamp(20px,6vh,70px);text-shadow:4px 4px 0 #ff4f7e,-4px -4px 0 #3fd0ff}
+#tag{font-family:'Silkscreen',monospace;letter-spacing:.5em;font-size:clamp(11px,3vw,15px);color:#2a5a86;margin-top:14px;padding-left:.5em}
+#rules{margin:18px 0 0;text-align:center;max-width:420px;font-size:15px;line-height:1.45;color:#2d5f86}
+#mspace{flex:1;min-height:30px}
+#packs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;max-width:520px}
+.chip{font-family:'Silkscreen',monospace;font-size:12px;letter-spacing:.18em;color:#2d5f86;background:rgba(255,255,255,.4);border:3px solid #2d5f86;padding:8px 12px;cursor:pointer}
+.chip.on{background:#ff5f8a;border-color:#7d2549;color:#14060d}
+.mbtn{width:min(100%,520px);cursor:pointer;font:inherit;border:0;padding:3px;display:block;margin-top:14px}
+.mbtn .in{display:flex;align-items:center;justify-content:center;gap:16px;padding:20px 12px;font-family:'Silkscreen',monospace;letter-spacing:.3em;font-size:clamp(16px,4.6vw,22px);color:#e4f7ff}
+#begin{--c:#3de0ff;--bg:#071a38}
+.mbtn:active{filter:brightness(1.25)}
+#bestbox{width:min(100%,520px);--c:#3de0ff;--bg:rgba(5,20,45,.92)}
+#bestbox .in{padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+#bestbox b{font-size:26px;color:#ffd34e}
+#how{font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.25em;color:#7fb2d4;margin-top:16px;cursor:pointer;background:none;border:0;padding:6px}
+#modal{position:absolute;inset:0;z-index:9;display:none;place-items:center;padding:16px;background:rgba(2,8,18,.7)}
+#modal.on{display:grid}
+#modal .px{width:min(100%,460px);max-height:90%;--c:#52e1ff;--bg:#071a38}
+#modal .in{padding:20px;overflow:auto;max-height:80vh}
+#modal h3{margin:0 0 10px;font-family:'Silkscreen',monospace;letter-spacing:.25em;font-size:15px;color:#ff5f8a}
+#modal p{margin:8px 0;font-size:16px;line-height:1.4;color:#cfe9f7}
+#modal .mbtn{margin-top:10px}
+#modal .mbtn .in{padding:14px 10px;font-size:14px}
+#end{background:rgba(2,8,18,.55)}
+#ewrap{min-height:100%;display:grid;place-items:center;padding:calc(20px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom))}
+#ecard{width:min(100%,480px);--c:#52e1ff;--bg:rgba(5,16,36,.95)}
+#ecard .in{padding:22px 18px 18px;text-align:center}
+#etitle{font-family:'Silkscreen',monospace;letter-spacing:.3em;font-size:13px;color:#ff5f8a}
+#edepth{font-size:clamp(46px,14vw,70px);font-weight:700;color:#52e1ff;line-height:1.05;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+#ezone{font-family:'Silkscreen',monospace;font-size:12px;letter-spacing:.2em;color:#8fb6cf}
+.badge{display:inline-block;background:#ffd34e;color:#3a2a00;font-family:'Silkscreen',monospace;font-weight:700;font-size:12px;letter-spacing:.2em;padding:5px 10px;margin-top:10px}
+#ecomp{font-size:15px;color:#cfe9f7;margin:12px 0 6px;line-height:1.35}
+#escore{font-size:18px;color:#ff5f8a;margin-bottom:10px}
+#erows{text-align:left;margin:10px 0 4px;border-top:2px solid #17406a}
+.er{display:flex;gap:10px;align-items:center;padding:7px 2px;border-bottom:2px solid #0f2a4d;font-size:15px}
+.er i{flex:none;width:12px;height:12px}
+.er span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.er em{font-style:normal;color:#8fd8ff;font-variant-numeric:tabular-nums}
+.er small{display:block;color:#5d84a0;font-size:11px;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis}
+#ebtns{display:flex;gap:10px;margin-top:8px}
+#ebtns .mbtn{margin-top:6px}
+#ebtns .mbtn .in{padding:14px 8px;font-size:13px;letter-spacing:.2em}
+#again{--c:#ff5f8a;--bg:#3a1226}
+#copy{--c:#3de0ff;--bg:#071a38}
+#flash{position:absolute;inset:0;z-index:8;pointer-events:none;background:radial-gradient(circle,rgba(255,40,60,0) 30%,rgba(255,40,60,.5));opacity:0;transition:opacity .4s}
+#flash.on{opacity:1;transition:opacity .04s}
+@media (max-height:560px){
+ #hud{padding-top:calc(6px + env(safe-area-inset-top))}
+ .stat .in{padding:5px 10px 4px}.stat .v{font-size:22px}
+ #icons{position:absolute;top:8px;left:50%;transform:translateX(-50%);gap:8px;margin:0;width:auto;max-width:none}
+ .ibtn{width:40px;height:34px}
+ #qbox{top:78px}#qbox .in{padding:10px 14px 8px}
+ #qtxt{font-size:20px;margin:6px 0 8px}#qhint{font-size:11px}
+ #dial{width:54px;height:54px}#dial span{width:38px;height:38px;font-size:18px}
+ #ans{min-height:42px}
+ #mwrap{padding-top:50px}#logo{margin-top:0;font-size:44px}
+ #packs{margin-top:10px}.mbtn .in{padding:12px}
+}
+</style>
+</head>
+<body class="menu">
+<div id="app">
+  <canvas id="cv"></canvas>
+  <canvas id="ov"></canvas>
+
+  <div id="hud">
+    <div id="hudrow">
+      <div class="px stat" id="dp"><div class="in"><div class="lab">Depth</div><div class="v" id="dv">0m</div></div></div>
+      <div id="prog"><div id="sq"></div><div class="lab" id="plab">Prompt 1 of 7</div></div>
+      <div class="px stat" id="sc"><div class="in"><div class="lab">Score</div><div class="v" id="sv">0</div></div></div>
+    </div>
+    <div id="icons">
+      <button class="px ibtn" id="menubtn" aria-label="Menu"><span class="in">≡</span></button>
+      <button class="px ibtn" id="mute" aria-label="Sound"><span class="in">♪</span></button>
+    </div>
+  </div>
+
+  <div class="px" id="qbox"><div class="in">
+    <div id="qlab">PROMPT 1 OF 7</div>
+    <div id="qtxt"></div>
+    <div id="qhint">▼ rarer answers sink deeper ▼</div>
+  </div></div>
+
+  <div id="toast"></div>
+  <div id="gain">+0m</div>
+
+  <form id="bar" autocomplete="off">
+    <div id="dial"><span id="dn">25</span></div>
+    <div id="form">
+      <div id="iw">
+        <div class="px"><div class="in"><input id="ans" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" maxlength="40" placeholder="type one answer…"></div></div>
+        <div id="tbar"></div>
+      </div>
+      <button type="submit" class="px" id="go"><span class="in">DIVE</span></button>
+    </div>
+  </form>
+
+  <div class="scr on" id="menu"><div id="mwrap">
+    <div id="logo">SERHII'S</div>
+    <div id="tag">DIVE QUIZZ</div>
+    <div id="rules">7 prompts · 25 seconds each · rarer answers sink deeper</div>
+    <div id="packs"></div>
+    <div id="mspace"></div>
+    <div class="px" id="bestbox"><div class="in"><span class="lab">Best depth</span><b id="bestv">0 m</b></div></div>
+    <button class="px mbtn" id="begin"><span class="in">▼ BEGIN DESCENT ▼</span></button>
+    <button id="how">▸ HOW TO PLAY</button>
+  </div></div>
+
+  <div class="scr" id="end"><div id="ewrap"><div class="px" id="ecard"><div class="in">
+    <div id="etitle">DIVE COMPLETE</div>
+    <div id="edepth">0m</div>
+    <div id="ezone"></div>
+    <div id="ebadge"></div>
+    <div id="ecomp"></div>
+    <div id="escore"></div>
+    <div id="erows"></div>
+    <div id="ebtns">
+      <button class="px mbtn" id="again"><span class="in">DIVE AGAIN</span></button>
+      <button class="px mbtn" id="copy"><span class="in">COPY RESULT</span></button>
+    </div>
+  </div></div></div></div>
+
+  <div id="modal"><div class="px"><div class="in" id="mbody"></div></div></div>
+  <div id="flash"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= PROMPTS =================
+   'Name:tier:alias,alias'  tier 1 = common (shallow) ... 5 = legendary (deep) */
+const PROMPTS=[
+['Name a country that borders Italy',['France:1','Switzerland:1','Austria:2','Slovenia:3','San Marino:4','Vatican City:5:vatican,holy see']],
+['Name a country that borders Germany',['France:1','Poland:1','Austria:1','Netherlands:2:holland','Switzerland:2','Belgium:2','Denmark:2','Czech Republic:3:czechia,czech','Luxembourg:4']],
+['Name a country that borders Spain',['Portugal:1','France:1','Morocco:3','Andorra:4','Gibraltar:5:united kingdom,uk,britain,england']],
+['Name a country that borders Russia',['China:1','Ukraine:1','Kazakhstan:2','Finland:2','Belarus:2','Poland:2','Norway:3','Estonia:3','Latvia:3','Lithuania:3','Georgia:3','Azerbaijan:3','Mongolia:4','North Korea:4']],
+['Name a country that borders Brazil',['Argentina:1','Colombia:1','Peru:2','Bolivia:2','Paraguay:2','Uruguay:2','Venezuela:2','Guyana:3','Suriname:4','French Guiana:5:france']],
+['Name a country that borders France',['Spain:1','Italy:1','Germany:1','Belgium:2','Switzerland:2','Luxembourg:3','Andorra:4','Monaco:4','Brazil:5','Suriname:5','Netherlands:5:holland']],
+['Name a country that borders India',['Pakistan:1','China:1','Nepal:2','Bangladesh:2','Bhutan:3','Myanmar:3:burma']],
+['Name a country in South America',['Brazil:1','Argentina:1','Chile:1','Peru:1','Colombia:1','Ecuador:2','Bolivia:2','Venezuela:2','Uruguay:2','Paraguay:3','Guyana:4','Suriname:4','French Guiana:5']],
+['Name a Canadian province or territory',['Ontario:1','Quebec:1','British Columbia:1:bc','Alberta:1','Manitoba:2','Saskatchewan:2','Nova Scotia:2','New Brunswick:3','Newfoundland and Labrador:3:newfoundland,labrador','Prince Edward Island:3:pei','Yukon:3','Northwest Territories:4:nwt','Nunavut:4']],
+['Name an ocean',['Pacific:1:pacific ocean','Atlantic:1:atlantic ocean','Indian:2:indian ocean','Arctic:3:arctic ocean','Southern:5:southern ocean,antarctic ocean']],
+['Name a Great Lake',['Superior:1:lake superior','Michigan:1:lake michigan','Huron:2:lake huron','Erie:2:lake erie','Ontario:2:lake ontario']],
+['Name a planet in our solar system',['Mars:1','Jupiter:1','Saturn:1','Venus:1','Earth:2','Neptune:2','Mercury:2','Uranus:3']],
+['Name a noble gas',['Helium:1','Neon:1','Argon:2','Krypton:3','Xenon:3','Radon:4','Oganesson:5']],
+['Name a halogen element',['Chlorine:1','Fluorine:2','Iodine:2','Bromine:3','Astatine:4','Tennessine:5']],
+['Name a country that starts with B',['Brazil:1','Belgium:1','Bolivia:2','Bulgaria:2','Bangladesh:2','Belarus:2','Bahamas:2:the bahamas','Barbados:3','Bahrain:3','Belize:3','Bhutan:3','Botswana:3','Bosnia and Herzegovina:3:bosnia','Benin:4','Brunei:4','Burundi:4','Burkina Faso:4']],
+['Name a country that starts with M',['Mexico:1','Morocco:1','Mongolia:2','Malaysia:2','Madagascar:2','Malta:2','Mali:3','Monaco:3','Mozambique:3','Malawi:3','Maldives:3','Myanmar:3','Mauritania:4','Mauritius:4','Moldova:4','Montenegro:4','Marshall Islands:5','Micronesia:5']],
+['Name a country on the Mediterranean Sea',['Italy:1','Spain:1','France:1','Greece:1','Turkey:1:turkiye','Egypt:1','Morocco:2','Tunisia:2','Libya:2','Algeria:2','Israel:2','Lebanon:2','Cyprus:2','Malta:2','Croatia:2','Syria:3','Albania:3','Slovenia:3','Montenegro:3','Monaco:3','Bosnia and Herzegovina:4:bosnia','Palestine:4']],
+['Name a Nordic country or territory',['Sweden:1','Norway:1','Denmark:1','Finland:2','Iceland:2','Greenland:4','Faroe Islands:5:faroes','Aland:5:åland,aland islands']],
+['Name a Canadian city with an NHL team',['Toronto:1','Montreal:1','Vancouver:1','Calgary:2','Edmonton:2','Ottawa:2','Winnipeg:3']],
+['Name a Greek Olympian god or goddess',['Zeus:1','Poseidon:1','Athena:1','Apollo:1','Hera:2','Ares:2','Artemis:2','Aphrodite:2','Hermes:2','Demeter:3','Hades:3','Hephaestus:4:hephaistos','Dionysus:4:dionysos','Hestia:4']],
+['Name a Beatle',['John Lennon:1:john,lennon','Paul McCartney:1:paul,mccartney','George Harrison:2:george,harrison','Ringo Starr:2:ringo,starr','Pete Best:5:best','Stuart Sutcliffe:5:sutcliffe']],
+['Name one of the Seven Dwarfs',['Grumpy:1','Happy:1','Sleepy:1','Dopey:1','Doc:2','Bashful:2','Sneezy:2']],
+['Name a continent',['Asia:1','Africa:1','Europe:1','North America:1','South America:1','Australia:2:oceania,australasia','Antarctica:2']],
+['Name a US president carved into Mount Rushmore',['George Washington:1:washington','Abraham Lincoln:1:lincoln','Thomas Jefferson:1:jefferson','Theodore Roosevelt:3:teddy roosevelt,roosevelt']],
+['Name a colour of the rainbow',['Red:1','Orange:1','Yellow:1','Green:1','Blue:1','Violet:2:purple','Indigo:3']],
+['Name a Summer Olympics host city, 2000 to 2028',['Sydney:1','Athens:1','Beijing:1','London:1','Rio de Janeiro:1:rio','Tokyo:2','Paris:2','Los Angeles:4:la']],
+['Name a US state that starts with M',['Michigan:1','Minnesota:1','Montana:2','Maine:2','Massachusetts:2','Maryland:3','Missouri:3','Mississippi:3']],
+['Name a US state that touches the Pacific Ocean',['California:1','Oregon:1','Washington:1','Alaska:2','Hawaii:2']],
+['Name a country on the Black Sea',['Turkey:1:turkiye','Russia:1','Ukraine:1','Romania:2','Bulgaria:2','Georgia:2']],
+['Name a country on the Baltic Sea',['Germany:1','Poland:1','Sweden:1','Finland:1','Denmark:2','Russia:2','Estonia:2','Latvia:3','Lithuania:3']],
+['Name a country on the Red Sea',['Egypt:1','Saudi Arabia:1','Sudan:2','Yemen:2','Eritrea:3','Israel:3','Jordan:3','Djibouti:4']]
+];
+
+const MORE=[
+["Name a pizza topping",["Pepperoni:1","Cheese:1:mozzarella,extra cheese","Mushrooms:1:mushroom","Sausage:1:italian sausage","Onions:1:onion","Bacon:1","Pineapple:2","Olives:2:olive,black olives,green olives","Green Peppers:2:green pepper,bell pepper,peppers,pepper","Ham:2","Tomatoes:2:tomato","Chicken:2","Spinach:3","Jalapenos:3:jalapeno","Basil:3","Garlic:3","Anchovies:3:anchovy","Ground Beef:3:beef,hamburger","Salami:3","Artichoke:4:artichoke hearts","Arugula:4:rocket","Prosciutto:4","Feta:4","Broccoli:4","Corn:4:sweetcorn","Pesto:4","Shrimp:4","Sun-Dried Tomatoes:4:sun dried tomatoes","Goat Cheese:4","Ricotta:4","Buffalo Chicken:4","Egg:5","Truffle:5","Figs:5:fig","Caramelized Onions:5","Capers:5","Pickles:5","Clams:5:clam","Hot Honey:5"],"food"],
+["Name a pasta shape",["Spaghetti:1","Penne:1","Macaroni:1","Fettuccine:1:fettucini","Lasagna:1:lasagne","Linguine:2","Rigatoni:2","Fusilli:2","Farfalle:2:bow tie,bowtie","Ravioli:2","Tortellini:2","Orzo:3","Gnocchi:3","Rotini:3","Ziti:3","Angel Hair:3:capellini","Cannelloni:3","Pappardelle:3","Tagliatelle:3","Vermicelli:3","Orecchiette:4","Conchiglie:4:shells,shell","Ditalini:4","Cavatappi:4","Bucatini:4","Manicotti:4","Gemelli:4","Paccheri:5","Radiatori:5","Trofie:5","Strozzapreti:5","Tortelloni:5","Anelli:5","Cavatelli:5","Casarecce:5","Mafalde:5","Campanelle:5","Tagliolini:5"],"food"],
+["Name a type of cheese",["Cheddar:1","Mozzarella:1","Parmesan:1:parmigiano reggiano,parmigiano","Swiss:1:emmental,emmentaler","Brie:1","Gouda:1","Feta:1","Provolone:2","Blue Cheese:2:bleu cheese","Monterey Jack:2","Colby:2:colby jack","Cream Cheese:2","Cottage Cheese:2","Camembert:2","Ricotta:2","Havarti:3","Gruyere:3","Mascarpone:3","Halloumi:3","Manchego:3","Pecorino:3:pecorino romano","Gorgonzola:3","Asiago:3","Roquefort:3","Stilton:3","Edam:3","Paneer:3","Burrata:3","Jarlsberg:4","Fontina:4","Cotija:4","Queso Fresco:4","Muenster:4","Limburger:4","Raclette:4","Comte:4","Taleggio:5","Epoisses:5","Red Leicester:5","Wensleydale:5","Cheshire:5","Appenzeller:5","Reblochon:5","Oaxaca:5"],"food"],
+["Name a fruit",["Apple:1","Banana:1","Orange:1","Grapes:1:grape","Strawberry:1","Watermelon:1","Pineapple:1","Mango:1","Peach:1","Pear:1","Cherry:1","Lemon:1","Blueberry:1","Raspberry:1","Kiwi:2","Plum:2","Lime:2","Cantaloupe:2:melon","Honeydew:2","Pomegranate:2","Grapefruit:2","Papaya:2","Coconut:2","Apricot:2","Blackberry:2","Cranberry:2","Avocado:2","Tangerine:2:mandarin,clementine","Nectarine:2","Fig:3","Date:3","Passion Fruit:3:passionfruit","Dragon Fruit:3:dragonfruit,pitaya","Lychee:3:litchi","Guava:3","Persimmon:3","Starfruit:4:star fruit,carambola","Kumquat:4","Quince:4","Mulberry:4","Gooseberry:4","Currant:4","Jackfruit:4","Durian:4","Rambutan:4","Tamarind:4","Elderberry:4","Pomelo:4","Plantain:4","Mangosteen:5","Soursop:5:guanabana","Boysenberry:5","Loganberry:5","Cherimoya:5:custard apple","Salak:5","Longan:5","Ugli Fruit:5","Feijoa:5","Jujube:5","Lingonberry:5","Cloudberry:5","Huckleberry:5","Saskatoon Berry:5:saskatoon"],"food"],
+["Name a vegetable",["Carrot:1","Potato:1","Broccoli:1","Corn:1","Tomato:1","Onion:1","Lettuce:1","Cucumber:1","Spinach:1","Celery:1","Peas:1:pea","Cabbage:2","Cauliflower:2","Zucchini:2:courgette","Bell Pepper:2:pepper,peppers","Mushroom:2","Green Beans:2:green bean,string beans","Asparagus:2","Beets:2:beet,beetroot","Radish:2","Squash:2","Pumpkin:2","Sweet Potato:2","Garlic:2","Eggplant:2:aubergine","Kale:2","Turnip:3","Brussels Sprouts:3:brussel sprouts","Artichoke:3","Leek:3","Parsnip:3","Rutabaga:3:swede","Bok Choy:3:pak choi","Arugula:3:rocket","Okra:3","Fennel:3","Shallot:3","Collard Greens:3:collards","Watercress:4","Kohlrabi:4","Endive:4","Radicchio:4","Swiss Chard:4:chard","Jicama:4","Daikon:4","Celeriac:4","Edamame:4","Yam:4","Bamboo Shoots:5","Fiddleheads:5:fiddlehead","Salsify:5","Romanesco:5","Rapini:5:broccoli rabe","Sunchoke:5:jerusalem artichoke","Taro:5","Cassava:5:yuca","Lotus Root:5","Horseradish:5"],"food"],
+["Name a flavour of ice cream",["Vanilla:1","Chocolate:1","Strawberry:1","Mint Chocolate Chip:2:mint chip,mint","Cookies and Cream:2:cookies n cream,oreo","Cookie Dough:2","Butter Pecan:2","Rocky Road:2","Coffee:2:mocha","Pistachio:2","Peanut Butter:2","Neapolitan:3","Salted Caramel:3:caramel","Cherry:3","Raspberry:3","Peach:3","Mango:3","Lemon:3","Coconut:3","Banana:3","Birthday Cake:3","Cotton Candy:3","Rum Raisin:4","Moose Tracks:4","Maple Walnut:4","Bubblegum:4","Green Tea:4:matcha","Honeycomb:4","Dulce de Leche:4","Cheesecake:4","Black Cherry:4","Pralines and Cream:4","Brownie:4","Black Sesame:5","Ube:5","Lavender:5","Tiramisu:5","Spumoni:5"],"food"],
+["Name a breakfast food",["Pancakes:1:pancake","Waffles:1:waffle","Eggs:1:egg,scrambled eggs","Bacon:1","Toast:1","Cereal:1","Oatmeal:1:porridge","Sausage:2","French Toast:2","Bagel:2","Yogurt:2:yoghurt","Muffin:2","Hash Browns:2:hashbrowns","Omelette:2:omelet","Fruit:2","Croissant:2","Granola:2","Donut:3:doughnut","Smoothie:3","Cinnamon Roll:3","Biscuits:3:biscuit","Breakfast Burrito:3","Crepes:3:crepe","Eggs Benedict:3","Scone:3","Avocado Toast:3","Home Fries:4","Grits:4","Danish:4","Quiche:4","Corned Beef Hash:4","Congee:5","Shakshuka:5","Huevos Rancheros:5","Chilaquiles:5","Kedgeree:5","Full English:5","Muesli:5","Bannock:5"],"food"],
+["Name a herb or spice",["Pepper:1:black pepper","Cinnamon:1","Basil:1","Oregano:1","Parsley:1","Thyme:1","Rosemary:1","Paprika:2","Cumin:2","Nutmeg:2","Ginger:2","Chili Powder:2:chili,chilli","Cayenne:2","Mint:2","Dill:2","Sage:2","Cilantro:2:coriander","Turmeric:2","Cloves:3:clove","Vanilla:3","Saffron:3","Cardamom:3","Bay Leaf:3:bay leaves,bay","Chives:3","Tarragon:3","Allspice:3","Star Anise:3:anise","Curry Powder:3:curry","Mustard Seed:4","Fennel Seed:4","Fenugreek:4","Sumac:4","Zaatar:4","Marjoram:4","Lemongrass:4","Caraway:4","Mace:4","Juniper:5","Asafoetida:5:hing","Galangal:5","Lavender:5","Nigella:5:black seed,kalonji","Savory:5","Lovage:5","Epazote:5","Sichuan Pepper:5:szechuan pepper","Chervil:5"],"food"],
+["Name a Mexican dish",["Tacos:1:taco","Burrito:1","Quesadilla:1","Nachos:1","Enchiladas:2:enchilada","Guacamole:2","Fajitas:2:fajita","Tamales:2:tamale","Churros:2","Salsa:2","Chimichanga:3","Tostada:3","Carnitas:3","Pico de Gallo:3","Refried Beans:3","Pozole:4","Mole:4","Elote:4","Chiles Rellenos:4:chile relleno","Tortas:4:torta","Barbacoa:4","Ceviche:4","Birria:4","Chilaquiles:4","Flautas:4:flauta,taquitos","Horchata:4","Sopes:5:sope","Huaraches:5","Menudo:5","Cochinita Pibil:5","Tlayuda:5","Gordita:5","Atole:5"],"food"],
+["Name an Indian dish",["Butter Chicken:1","Naan:1","Samosa:1","Tikka Masala:1:chicken tikka masala,tikka","Curry:1","Biryani:2","Dal:2:dahl,daal","Tandoori Chicken:2:tandoori","Palak Paneer:2:saag paneer,paneer","Korma:2","Roti:2:chapati","Chana Masala:3","Aloo Gobi:3","Vindaloo:3","Paratha:3","Dosa:3","Pakora:3:bhaji","Raita:3","Lassi:3","Idli:4","Chaat:4","Rogan Josh:4","Pav Bhaji:4","Gulab Jamun:4","Jalebi:4","Thali:4","Poori:4:puri","Saag:4","Kulfi:4","Vada Pav:5","Bhel Puri:5","Kheer:5","Rasmalai:5","Uttapam:5","Malai Kofta:5","Haleem:5"],"food"],
+["Name a Japanese dish",["Sushi:1","Ramen:1","Tempura:1","Teriyaki:1","Sashimi:1","Miso Soup:2","Udon:2","Gyoza:2","Edamame:2","California Roll:2","Nigiri:2","Mochi:2","Tonkatsu:3","Takoyaki:3","Onigiri:3","Yakitori:3","Soba:3","Katsu Curry:3","Maki:3","Unagi:3:eel","Yakisoba:3","Okonomiyaki:4","Dango:4","Tamago:4","Sukiyaki:4","Shabu Shabu:4","Donburi:4:rice bowl","Natto:4","Tamagoyaki:4","Temaki:4","Uramaki:4","Karaage:4","Taiyaki:4","Chirashi:5","Tsukemono:5","Oden:5","Futomaki:5","Dorayaki:5"],"food"],
+["Name a type of bread",["White Bread:1:white","Whole Wheat:1:wheat,brown bread","Baguette:1","Sourdough:1","Rye:2:rye bread","Ciabatta:2","Naan:2","Pita:2","Bagel:2","Croissant:2","Focaccia:2","Cornbread:2","Flatbread:2","Tortilla:2","Roll:2:bun","Banana Bread:2","Multigrain:2","Garlic Bread:2","Brioche:3","Pumpernickel:3","Challah:3","English Muffin:3","Soda Bread:3","Chapati:3","Pretzel:3","Roti:3","Texas Toast:3","Lavash:4","Injera:4","Bannock:4","Matzo:4:matzah","Panettone:4","Bao:4","Monkey Bread:4","Stollen:5","Arepa:5","Pandesal:5","Fry Bread:5"],"food"],
+["Name a type of nut",["Peanut:1","Almond:1","Walnut:1","Cashew:1","Pecan:1","Pistachio:1","Hazelnut:2:filbert","Macadamia:2","Brazil Nut:2","Pine Nut:2:pignoli","Chestnut:2","Black Walnut:4","Butternut:4","Hickory:5","Kola Nut:5","Tiger Nut:5","Pili Nut:5","Candlenut:5","Ginkgo Nut:5","Cobnut:5"],"food"],
+["Name a soft drink brand",["Coca-Cola:1:coke,cola","Pepsi:1","Sprite:1","Fanta:1","Dr Pepper:1","Mountain Dew:1","7 Up:2:7up,seven up","Root Beer:2","Ginger Ale:2","Orange Soda:2","Cream Soda:2","Barqs:3","Crush:3:orange crush","A&W:3:aw","Squirt:3","Canada Dry:3","Sunkist:3","Schweppes:4","Tab:4","Irn-Bru:4:irn bru","Mello Yello:4","Big Red:4","Surge:4","Jones Soda:5","Vernors:5","Faygo:5","Cheerwine:5","Inca Kola:5","Ramune:5","Pop Shoppe:5","Moxie:5","Vimto:5"],"food"],
+["Name a chocolate bar or candy",["Snickers:1","Kit Kat:1:kitkat","Twix:1","Reeses:1:reese's,reeses cups,peanut butter cups","M&Ms:1:mms,m&m,m and m","Hersheys:1:hershey,hershey's","Skittles:1","Milky Way:2","Mars Bar:2:mars","Butterfinger:2","Starburst:2","Twizzlers:2","Sour Patch Kids:2","Toblerone:2","Smarties:2","Ferrero Rocher:2","Cadbury:2:dairy milk","Gummy Bears:2:gummi bears,gummies","3 Musketeers:3:three musketeers","Jolly Rancher:3","Nerds:3","Tootsie Roll:3","Crunch:3","Aero:3","Coffee Crisp:3","Oh Henry:3","Caramilk:3","Lindt:3","Swedish Fish:3","Jelly Beans:3","Mentos:3","Lifesavers:3","Kinder:3:kinder bueno,kinder surprise","Haribo:3","Mr Big:4","Pop Rocks:4","Whoppers:4","Milk Duds:4","Payday:4","Baby Ruth:4","Almond Joy:4","Mounds:4","Laffy Taffy:4","Crispy Crunch:4","Reeses Pieces:4","Junior Mints:5","Ritter Sport:5","Wunderbar:5","Runts:5"],"food"],
+["Name something you can put on a burger",["Cheese:1","Lettuce:1","Tomato:1","Onion:1","Pickles:1:pickle","Ketchup:1","Mustard:1","Mayo:1:mayonnaise","Bacon:1","Fried Egg:2:egg","Avocado:2","Mushrooms:2","Jalapenos:2","BBQ Sauce:2:barbecue sauce","Special Sauce:3","Grilled Onions:3:caramelized onions","Relish:3","Guacamole:3","Onion Rings:3","Hot Sauce:3","Pineapple:4","Beets:4:beetroot","Coleslaw:4","Chili:4","Blue Cheese:4","Sriracha:4","Aioli:4","Peanut Butter:5","Pulled Pork:5","Arugula:5","Sprouts:5","Fried Pickles:5","Mac and Cheese:5","Cheese Curds:5"],"food"],
+["Name a type of sandwich",["Grilled Cheese:1","PB&J:1:peanut butter and jelly,pbj","Ham and Cheese:1","Turkey:1:turkey sandwich","Sub:1:submarine,hoagie,hero","BLT:2","Club:2:club sandwich","Panini:2","Egg Salad:2","Chicken Salad:2","Philly Cheesesteak:2:cheesesteak","Meatball Sub:2","Italian:2","Reuben:3","Tuna Melt:3:tuna sandwich,tuna salad","Banh Mi:3","Gyro:3","Falafel:3","Cuban:3:cubano","Sloppy Joe:3","Pastrami:3","Monte Cristo:4","Po Boy:4","French Dip:4","Croque Monsieur:4","Patty Melt:4","Lox Bagel:4:bagel with lox","Muffuletta:5","Katsu Sando:5","Tea Sandwich:5","Chivito:5","Bocadillo:5"],"food"],
+["Name a Canadian food or snack",["Poutine:1","Maple Syrup:1","Butter Tart:2","Nanaimo Bar:2","Beaver Tail:2:beavertail","Ketchup Chips:2","Timbits:2:timbit","Kraft Dinner:2:kd,mac and cheese","Caesar:3:bloody caesar","Tourtiere:3","Bannock:3","Montreal Bagel:3","Smoked Meat:3:montreal smoked meat","Peameal Bacon:3:back bacon","Pierogi:3","Maple Taffy:3","Lobster Roll:3","Saskatoon Berry Pie:4","Split Pea Soup:4","Fiddleheads:4","Donair:4","Flapper Pie:5","Pouding Chomeur:5","Jiggs Dinner:5","Fish and Brewis:5","Bakeapple:5","Cipaille:5"],"food"],
+
+["Name a Summer or Winter Olympic sport",["Swimming:1","Gymnastics:1","Soccer:1:football","Basketball:1","Ice Hockey:1:hockey","Skiing:1:alpine skiing","Figure Skating:1","Tennis:1","Track and Field:1:athletics,running,sprinting","Boxing:1","Volleyball:1","Cycling:2","Rowing:2","Diving:2","Archery:2","Fencing:2","Judo:2","Wrestling:2","Weightlifting:2","Snowboarding:2","Curling:2","Bobsled:2:bobsleigh","Speed Skating:2","Skeleton:3","Luge:3","Biathlon:3","Ski Jumping:3","Cross-Country Skiing:3","Sailing:3","Surfing:3","Skateboarding:3","Rugby:3:rugby sevens","Golf:3","Table Tennis:3:ping pong","Badminton:3","Taekwondo:3","Handball:3","Water Polo:3","Equestrian:3:horse riding","Triathlon:3","Canoeing:3:kayaking,canoe","Sport Climbing:3:climbing","Freestyle Skiing:3","Baseball:3","Beach Volleyball:3","Rhythmic Gymnastics:4","Trampoline:4","Shooting:4","Modern Pentathlon:4","Karate:4","Artistic Swimming:4:synchronized swimming","Short Track:4","Softball:4","BMX:4","Mountain Biking:4","Breaking:5:breakdancing","Nordic Combined:5","Cricket:5","Lacrosse:5","Flag Football:5","Squash:5"],"fun"],
+["Name a board game",["Monopoly:1","Chess:1","Checkers:1:draughts","Scrabble:1","Clue:1:cluedo","Risk:1","Battleship:1","Connect Four:1:connect 4","Jenga:2","Sorry:2","Candy Land:2","Chutes and Ladders:2:snakes and ladders","Catan:2:settlers of catan","Ticket to Ride:2","Trivial Pursuit:2","Pictionary:2","Uno:2","Yahtzee:2","Backgammon:2","The Game of Life:2:life,game of life","Guess Who:2","Twister:2","Trouble:3","Pandemic:3","Carcassonne:3","Mancala:3","Go:3","Stratego:3","Othello:3","Scattergories:3","Taboo:3","Operation:3","Mouse Trap:3:mousetrap","Boggle:3","Codenames:3","Mahjong:3","Hungry Hungry Hippos:3","Apples to Apples:3","Cards Against Humanity:3","Cranium:4","Dominion:4","Azul:4","Splendor:4","Wingspan:4","Sequence:4","Parcheesi:4","Cribbage:4","Dixit:4","Seven Wonders:4:7 wonders","Dungeons and Dragons:4:dnd,d&d","Terraforming Mars:5","Gloomhaven:5","Twilight Imperium:5","Scotland Yard:5","Agricola:5","Kingdomino:5"],"fun"],
+["Name a musical instrument",["Piano:1","Guitar:1","Drums:1:drum,drum kit","Violin:1","Flute:1","Trumpet:1","Saxophone:1:sax","Clarinet:2","Trombone:2","Cello:2","Harp:2","Bass Guitar:2:bass,double bass","Ukulele:2","Banjo:2","Harmonica:2","Accordion:2","Organ:2","Keyboard:2","Tuba:3","Oboe:3","Bassoon:3","Xylophone:3","Triangle:3","Tambourine:3","Synthesizer:3:synth","Viola:3","Piccolo:3","French Horn:3:horn","Mandolin:3","Bagpipes:3:bagpipe","Cymbals:3","Recorder:3","Kazoo:3","Bongos:3:bongo","Maracas:3","Cowbell:3","Marimba:4","Glockenspiel:4","Didgeridoo:4","Sitar:4","Castanets:4","Ocarina:4","Dulcimer:4","Lute:4","Cornet:4","Euphonium:4","Pan Flute:4:panpipes,pan pipes","Harpsichord:4","Vibraphone:4","Steel Drum:4:steelpan,steel pan","Djembe:4","Tabla:4","Cajon:4","Wood Block:4","Kalimba:4:mbira,thumb piano","Theremin:5","Hurdy-Gurdy:5:hurdy gurdy","Zither:5","Celesta:5","Koto:5","Shamisen:5","Erhu:5","Oud:5","Balalaika:5","Melodica:5","Glass Harmonica:5","Contrabassoon:5","Bodhran:5"],"fun"],
+["Name a video game console",["PlayStation:1:ps,playstation 2,ps2,playstation 3,ps3,playstation 4,ps4,playstation 5,ps5","Xbox:1:xbox one,xbox series x","Nintendo Switch:1:switch","Wii:1","Nintendo 64:2:n64","Super Nintendo:2:snes,super nes","NES:2:nintendo entertainment system","Game Boy:2:gameboy","Nintendo DS:2:ds","Xbox 360:2","Sega Genesis:3:genesis,mega drive","Atari 2600:3:atari","GameCube:3","PSP:3:playstation portable","Steam Deck:3","Wii U:3","Nintendo 3DS:3:3ds","Switch 2:3:nintendo switch 2","Dreamcast:4","Sega Saturn:4:saturn","PS Vita:4:vita,playstation vita","Game Gear:4","Intellivision:4","Commodore 64:4:c64","Oculus Quest:4","TurboGrafx-16:5:turbografx","Neo Geo:5","Atari Jaguar:5:jaguar","3DO:5","ColecoVision:5","Virtual Boy:5","Magnavox Odyssey:5:odyssey","Ouya:5"],"fun"],
+["Name a hobby",["Reading:1:read","Drawing:1:draw","Painting:1:paint","Gaming:1:video games,playing video games","Cooking:1","Baking:1","Gardening:1","Hiking:1","Fishing:1","Photography:1","Knitting:2","Sewing:2","Writing:2","Dancing:2","Singing:2","Playing Guitar:2:guitar","Cycling:2:biking,bike riding","Running:2","Camping:2","Chess:2","Collecting:2","Jigsaw Puzzles:2:puzzles,puzzle","Yoga:2","Woodworking:3","Pottery:3","Crocheting:3:crochet","Origami:3","Birdwatching:3:bird watching","Scrapbooking:3","Embroidery:3","Quilting:3","Rock Climbing:3:climbing","Surfing:3","Skateboarding:3","Podcasting:3","Karaoke:3","Magic Tricks:3:magic","Meditation:3","Kayaking:3","Pickleball:3","Calligraphy:4","Candle Making:4","Stamp Collecting:4","Coin Collecting:4","Geocaching:4","Beekeeping:4","Home Brewing:4:brewing","Whittling:4","Stargazing:4:astronomy","Foraging:4","Juggling:4","Genealogy:4","Cosplay:4","Model Building:4","Disc Golf:4","Archery:4","Sailing:4","Scuba Diving:4","Soap Making:5","Fossil Hunting:5","Leatherworking:5","Blacksmithing:5","Lockpicking:5","Metal Detecting:5","Fencing:5","Paragliding:5"],"fun"],
+["Name a winter sport or activity",["Skiing:1","Snowboarding:1","Ice Skating:1:skating","Hockey:1:ice hockey","Sledding:1:tobogganing,toboggan","Building a Snowman:1:snowman","Snowball Fight:1","Snowshoeing:2","Curling:2","Snowmobiling:2","Ice Fishing:2","Cross-Country Skiing:3","Tubing:3:snow tubing","Dog Sledding:3","Broomball:3","Snow Angels:3","Ice Climbing:4","Bobsled:4","Luge:4","Ski Jumping:4","Ice Dancing:4","Biathlon:4","Winter Camping:4","Skijoring:5","Fat Biking:5","Ice Sailing:5","Bandy:5","Snowkiting:5","Telemark:5"],"fun"],
+["Name a type of dance",["Ballet:1","Hip Hop:1","Salsa:1","Tango:1","Waltz:1","Tap:1:tap dance","Jazz:2","Swing:2","Breakdancing:2:breaking","Line Dancing:2","Ballroom:2","Zumba:2","Disco:2","Macarena:2","Square Dance:3:square dancing","Contemporary:3","Foxtrot:3","Cha-Cha:3:cha cha","Rumba:3","Samba:3","Bachata:3","Flamenco:3","Belly Dance:3:belly dancing","Polka:3","Irish Step Dance:3:irish dance,step dance,riverdance","Bollywood:3","Twist:3","Charleston:3","Hula:3","Conga:3","Mambo:3","Electric Slide:3","Moonwalk:3","Floss:3","Merengue:4","Twerking:4","Lindy Hop:4","Jive:4","Quickstep:4","Cancan:4","Haka:4","Capoeira:4","Lambada:4","Pole Dancing:4","Jig:4","Cumbia:4","Gangnam Style:4","Paso Doble:5","Polonaise:5","Mazurka:5","Krumping:5","Voguing:5","Waacking:5","Locking:5","Popping:5","Kathak:5","Bharatanatyam:5","Morris Dancing:5","Reel:5","Hora:5","Tarantella:5","Schottische:5"],"fun"],
+["Name a camping essential",["Tent:1","Sleeping Bag:1","Flashlight:1:torch,headlamp","Campfire:1:fire","Marshmallows:1","Backpack:2","Matches:2:lighter","Water Bottle:2","Cooler:2","Camp Stove:2:stove","Bug Spray:2:insect repellent,mosquito repellent","Sunscreen:2","First Aid Kit:2","Map:2","Compass:2","Lantern:2","Firewood:2","Hot Dogs:2","Sleeping Pad:3:camping mat,air mattress","Camp Chair:3","Pocket Knife:3:knife,multitool","Rope:3:paracord","Tarp:3","Hiking Boots:3","Hammock:3","Toilet Paper:3","Cooking Pot:3","Fire Starter:3","Graham Crackers:3","Hatchet:4:axe","Bear Spray:4","Water Filter:4","Trash Bags:4","Tent Pegs:4:stakes","Binoculars:4","Spork:4","Thermos:4","Rain Poncho:4:poncho,rain jacket,raincoat","Trekking Poles:4","GPS:4","Mallet:5","Dry Bag:5","Whistle:5","Portable Charger:5","Camp Shower:5"],"fun"],
+["Name a superhero",["Superman:1","Batman:1","Spider-Man:1:spiderman","Wonder Woman:1","Iron Man:1","Captain America:1","Thor:1","Hulk:1:the hulk","Black Widow:2","Hawkeye:2","Aquaman:2","The Flash:2:flash","Green Lantern:2","Wolverine:2","Black Panther:2","Deadpool:2","Doctor Strange:2","Robin:2","Ant-Man:3:antman","Captain Marvel:3","Scarlet Witch:3","Falcon:3","Cyclops:3","Storm:3","Supergirl:3","Batgirl:3","Nightwing:3","Green Arrow:3","Shazam:3","Daredevil:3","Groot:3","Mr Incredible:3","Vision:4","Rogue:4","Beast:4","Nightcrawler:4","Cyborg:4","Martian Manhunter:4","Hawkman:4","Punisher:4","Ghost Rider:4","Blade:4","Silver Surfer:4","Star-Lord:4:starlord","Rocket Raccoon:4","Gamora:4","Moon Knight:4","She-Hulk:4","Ms Marvel:4","Elastigirl:4","Mr Fantastic:4","Human Torch:4","The Thing:4","Invincible:4","Homelander:4","Static Shock:5","Drax:5","Mantis:5","Squirrel Girl:5","Blue Beetle:5","Booster Gold:5","Plastic Man:5","Zatanna:5","Invisible Woman:5","Spawn:5","Hellboy:5","Omni-Man:5"],"fun"],
+["Name something you would find in a gym",["Treadmill:1","Dumbbells:1:dumbbell,weights","Barbell:1","Bench:2:bench press","Yoga Mat:2","Elliptical:2","Stationary Bike:2:exercise bike,spin bike","Kettlebell:2","Mirror:2:mirrors","Towels:2:towel","Lockers:2:locker","Squat Rack:3","Rowing Machine:3:rower","Cable Machine:3","Pull-Up Bar:3","Medicine Ball:3","Resistance Bands:3","Foam Roller:3","Jump Rope:3:skipping rope","Punching Bag:3:heavy bag","Leg Press:3","Stair Climber:3:stairmaster","Weight Plates:3","Sauna:3","Water Fountain:3","Smith Machine:4","Lat Pulldown:4","Battle Ropes:4","Plyo Box:4","TRX:4","Ab Wheel:4","Sled:4","Hack Squat:5","Prowler:5","Gymnastic Rings:5:rings"],"fun"],
+["Name a type of weather cloud",["Cumulus:1","Cirrus:1","Stratus:1","Cumulonimbus:2","Nimbus:2","Altocumulus:3","Altostratus:3","Nimbostratus:3","Stratocumulus:3","Cirrostratus:4","Cirrocumulus:4","Mammatus:5","Lenticular:5","Noctilucent:5","Asperitas:5","Arcus:5:shelf cloud,roll cloud","Pileus:5"],"nature"],
+["Name a major moon in our solar system",["Moon:1:luna,the moon","Titan:2","Europa:2","Ganymede:2","Io:2","Callisto:3","Enceladus:3","Triton:3","Phobos:3","Charon:3","Deimos:4","Mimas:4","Rhea:4","Iapetus:4","Dione:4","Tethys:4","Oberon:4","Titania:4","Miranda:4","Ariel:4","Phoebe:4","Umbriel:5","Nereid:5","Proteus:5","Himalia:5","Amalthea:5","Hyperion:5","Puck:5"],"nature"],
+["Name a type of shark",["Great White:1:white shark,great white shark","Hammerhead:1:hammerhead shark","Tiger Shark:1:tiger","Bull Shark:1:bull","Whale Shark:1","Mako:2:shortfin mako,mako shark","Nurse Shark:2:nurse","Blue Shark:2","Basking Shark:2:basking","Thresher:3:thresher shark","Lemon Shark:3:lemon","Reef Shark:3:blacktip reef shark,whitetip reef shark,grey reef shark","Blacktip:3:blacktip shark","Goblin Shark:3:goblin","Sand Tiger:3:ragged tooth","Greenland Shark:4","Megamouth:4","Cookiecutter:4:cookiecutter shark","Wobbegong:4","Angel Shark:4","Leopard Shark:4","Zebra Shark:4","Frilled Shark:4","Dogfish:4:spiny dogfish","Oceanic Whitetip:4","Port Jackson Shark:5","Sixgill Shark:5","Epaulette Shark:5","Bamboo Shark:5","Silky Shark:5","Carpet Shark:5","Horn Shark:5","Sawshark:5:saw shark","Lantern Shark:5","Megalodon:5"],"nature"],
+["Name a marine mammal",["Dolphin:1","Blue Whale:1:whale","Orca:1:killer whale","Humpback Whale:1:humpback","Seal:1","Sea Lion:2","Walrus:2","Manatee:2:sea cow","Sea Otter:2:otter","Beluga:2:beluga whale","Narwhal:2","Sperm Whale:2","Polar Bear:3","Porpoise:3","Minke Whale:3:minke","Gray Whale:3:grey whale","Dugong:3","Fin Whale:3","Elephant Seal:3","Harbour Seal:3:harbor seal","Fur Seal:3","Bowhead Whale:4:bowhead","Right Whale:4","Leopard Seal:4","Pilot Whale:4","Harp Seal:4","Sei Whale:5","Beaked Whale:5","Vaquita:5","River Dolphin:5:boto,pink river dolphin","Monk Seal:5","Weddell Seal:5","Ringed Seal:5","Bearded Seal:5","Hooded Seal:5"],"nature"],
+["Name a sea creature",["Shark:1","Dolphin:1","Whale:1","Octopus:1","Jellyfish:1","Crab:1","Lobster:1","Starfish:1:sea star","Seahorse:1","Sea Turtle:1:turtle","Stingray:1","Clownfish:1","Squid:2","Seal:2","Sea Lion:2","Shrimp:2","Eel:2","Pufferfish:2:blowfish,puffer fish","Manta Ray:2","Swordfish:2","Tuna:2","Barracuda:2","Sea Urchin:2","Sea Anemone:2:anemone","Coral:2","Oyster:2","Clam:2","Mussel:2","Scallop:2","Walrus:2","Narwhal:2","Salmon:2","Sea Otter:2","Manatee:2","Cuttlefish:3","Nautilus:3","Sea Cucumber:3","Moray Eel:3","Lionfish:3","Angelfish:3","Anglerfish:3","Mahi Mahi:3","Marlin:3","Sunfish:3:mola","Hermit Crab:3","Sea Snake:3","Barnacle:3","Krill:3","Plankton:3","Sardine:3","Anchovy:3","Cod:3","Herring:3","Halibut:3","Flounder:3","Grouper:3","Snapper:3","Mackerel:3","Parrotfish:3","Flying Fish:3","Giant Squid:3","Penguin:3","Nudibranch:4:sea slug","Lamprey:4","Hagfish:4","Colossal Squid:4","Vampire Squid:4","Blobfish:4","Oarfish:4","Man o War:4:portuguese man o war,man of war","Box Jellyfish:4","Leatherback Turtle:4","Wrasse:4","Triggerfish:4","Gulper Eel:5","Viperfish:5","Dumbo Octopus:5","Tube Worm:5","Sea Pen:5","Sea Fan:5","Sawfish:5","Remora:5","Pipefish:5","Isopod:5","Amphipod:5"],"nature"],
+["Name a dog breed",["Labrador Retriever:1:labrador,lab","Golden Retriever:1:golden","German Shepherd:1","Bulldog:1:english bulldog","Poodle:1","Beagle:1","Chihuahua:1","Husky:1:siberian husky","Pug:1","Dachshund:1","Boxer:1","Rottweiler:2","Doberman:2:doberman pinscher","Great Dane:2","Corgi:2:welsh corgi","Shih Tzu:2","Pomeranian:2","Border Collie:2","Cocker Spaniel:2:spaniel","Pit Bull:2","Dalmatian:2","Saint Bernard:2:st bernard","Yorkshire Terrier:2:yorkie","French Bulldog:2:frenchie","Bernese Mountain Dog:3","Australian Shepherd:3","Maltese:3","Greyhound:3","Bloodhound:3","Basset Hound:3","Newfoundland:3","Samoyed:3","Akita:3","Shiba Inu:3","Malamute:3:alaskan malamute","Jack Russell:3","Schnauzer:3","Chow Chow:3","Mastiff:3","Boston Terrier:3","Bichon Frise:3","Collie:3","Labradoodle:3","Goldendoodle:3","Whippet:4","Weimaraner:4","Vizsla:4","Papillon:4","Basenji:4","Pointer:4","Setter:4","Havanese:4","Afghan Hound:4","Bullmastiff:4","Airedale:4","Irish Wolfhound:4","Scottish Terrier:4:scottie","Rhodesian Ridgeback:4","Cavalier King Charles Spaniel:4:cavalier","Pekingese:4","Lhasa Apso:4","Saluki:5","Pharaoh Hound:5","Xoloitzcuintli:5","Komondor:5","Puli:5","Lundehund:5","Otterhound:5","Nova Scotia Duck Tolling Retriever:5:toller"],"nature"],
+["Name a big cat or wild cat",["Lion:1","Tiger:1","Leopard:1","Cheetah:1","Jaguar:1","Cougar:2:mountain lion,puma","Panther:2:black panther","Snow Leopard:2","Lynx:2","Bobcat:2","Ocelot:3","Serval:3","Caracal:3","Clouded Leopard:4","Sand Cat:4","Wildcat:4","Amur Leopard:4","Margay:5","Jaguarundi:5","Pallas Cat:5:pallass cat,manul","Fishing Cat:5","Black-footed Cat:5","Liger:5","Kodkod:5","Oncilla:5","Pampas Cat:5","Marbled Cat:5","Asian Golden Cat:5"],"nature"],
+["Name a dinosaur",["Tyrannosaurus Rex:1:t rex,trex,tyrannosaurus","Triceratops:1","Velociraptor:1:raptor","Stegosaurus:1","Brachiosaurus:2","Diplodocus:2","Ankylosaurus:2","Spinosaurus:2","Allosaurus:3","Pterodactyl:3:pteranodon","Apatosaurus:3:brontosaurus","Parasaurolophus:3","Iguanodon:3","Dilophosaurus:3","Pachycephalosaurus:4","Compsognathus:4","Gallimimus:4","Carnotaurus:4","Giganotosaurus:4","Argentinosaurus:4","Microraptor:4","Archaeopteryx:4","Protoceratops:4","Deinonychus:4","Utahraptor:4","Baryonyx:4","Oviraptor:4","Albertosaurus:4","Mosasaurus:4","Plesiosaurus:4:plesiosaur","Therizinosaurus:5","Maiasaura:5","Edmontosaurus:5","Styracosaurus:5","Plateosaurus:5","Coelophysis:5","Ichthyosaurus:5:ichthyosaur","Kentrosaurus:5","Ceratosaurus:5","Troodon:5","Carcharodontosaurus:5","Dreadnoughtus:5","Quetzalcoatlus:5"],"nature"],
+["Name a type of tree",["Oak:1","Maple:1:sugar maple","Pine:1","Birch:1","Palm:1:palm tree","Apple:1","Willow:2","Elm:2","Cedar:2","Spruce:2","Fir:2","Redwood:2:sequoia","Aspen:2","Cherry:2","Olive:2","Poplar:3","Ash:3","Beech:3","Cypress:3","Hemlock:3","Walnut:3","Sycamore:3","Magnolia:3","Eucalyptus:3","Baobab:3","Mangrove:3","Chestnut:3","Acacia:3","Joshua Tree:3","Giant Sequoia:3","Douglas Fir:3","Banyan:4","Larch:4","Juniper:4","Hickory:4","Dogwood:4","Linden:4","Alder:4","Yew:4","Ginkgo:4","Teak:4","Mahogany:4","Cottonwood:4","Hazel:4","Hawthorn:5","Tamarack:5","Monkey Puzzle:5","Kapok:5","Bristlecone Pine:5","Jacaranda:5","Rowan:5:mountain ash","Sassafras:5"],"nature"],
+["Name a type of bird",["Robin:1","Eagle:1","Owl:1","Hawk:1","Crow:1","Duck:1","Penguin:1","Parrot:1","Sparrow:1","Pigeon:1","Seagull:1:gull","Flamingo:1","Swan:1","Chicken:1","Peacock:1","Ostrich:1","Hummingbird:1","Blue Jay:2","Cardinal:2","Woodpecker:2","Falcon:2","Pelican:2","Turkey:2","Goose:2","Raven:2","Toucan:2","Vulture:2","Kiwi:2","Cockatoo:2","Canary:2","Finch:2","Heron:2","Crane:2","Stork:2","Puffin:2","Loon:2","Emu:2","Macaw:2","Albatross:3","Condor:3","Osprey:3","Kingfisher:3","Chickadee:3","Magpie:3","Starling:3","Swallow:3","Wren:3","Bluebird:3","Oriole:3","Cassowary:3","Kookaburra:3","Budgie:3:budgerigar,parakeet","Cormorant:3","Kestrel:3","Buzzard:3","Roadrunner:3","Quail:3","Pheasant:3","Dodo:3","Nuthatch:4","Warbler:4","Rhea:4","Gannet:4","Harrier:4","Grouse:4","Ptarmigan:4","Sandpiper:4","Plover:4","Tern:4","Bird of Paradise:4","Hornbill:4","Nightingale:4","Lark:4","Thrush:4","Shrike:5","Hoopoe:5","Bee-eater:5","Snipe:5","Skua:5","Petrel:5","Shearwater:5","Great Auk:5","Lyrebird:5","Quetzal:5","Secretary Bird:5","Shoebill:5","Kakapo:5","Takahe:5","Frigatebird:5","Booby:5","Junco:5","Grosbeak:5","Waxwing:5"],"nature"],
+["Name a farm animal",["Cow:1","Pig:1","Chicken:1","Horse:1","Sheep:1","Goat:1","Duck:1","Turkey:2","Donkey:2","Goose:2","Rooster:2","Bull:2","Lamb:2","Hen:2","Calf:2","Llama:3","Alpaca:3","Rabbit:3","Ox:3","Mule:3","Piglet:3","Pony:3","Bison:4","Guinea Fowl:4","Peacock:4","Yak:4","Water Buffalo:4","Ostrich:4","Quail:4","Emu:5","Camel:5","Reindeer:5"],"nature"],
+["Name a type of pet",["Dog:1","Cat:1","Goldfish:1:fish","Hamster:1","Rabbit:1","Parrot:1:bird,budgie","Guinea Pig:1","Turtle:2:tortoise","Snake:2","Lizard:2","Gerbil:2","Rat:2","Mouse:2","Ferret:2","Horse:2","Parakeet:2","Chinchilla:3","Hedgehog:3","Frog:3","Gecko:3:leopard gecko","Bearded Dragon:3","Hermit Crab:3","Tarantula:3:spider","Canary:3","Cockatiel:3","Chicken:3","Pig:3:pot-bellied pig,mini pig","Iguana:3","Ball Python:3:python","Betta:3:betta fish","Goat:4","Sugar Glider:4","Axolotl:4","Chameleon:4","Corn Snake:4","Salamander:4","Duck:4","Cockatoo:4","Macaw:4","Praying Mantis:5","Stick Insect:5","Skunk:5","Fennec Fox:5","Degu:5","Capybara:5","Alpaca:5","Newt:5","Snail:5"],"nature"],
+["Name something you can do at the beach",["Swimming:1:swim","Sandcastles:1:build a sandcastle,sand castle","Sunbathing:1:sunbathe,tanning,tan","Surfing:1:surf","Collecting Shells:2:shell collecting,seashells,shells","Beach Volleyball:2:volleyball","Flying a Kite:2:kite,kite flying","Snorkeling:2:snorkel","Picnic:2:have a picnic","Fishing:2:fish","Walking:2:walk,beach walk","Reading:2:read a book,read","Frisbee:2","Napping:2:sleep,nap","Paddleboarding:3:paddleboard,paddle boarding,sup","Kayaking:3:kayak","Bonfire:3:campfire","Jet Skiing:3:jet ski","Scuba Diving:3:scuba","Bodyboarding:3:boogie boarding,boogie board","Sailing:3:sail","Boating:3:boat","Playing Catch:3:catch","Kitesurfing:4:kitesurf","Beachcombing:4:beachcomb","Tide Pooling:4:tidepooling","Yoga:4","Skimboarding:4:skimboard","Parasailing:4:parasail","Metal Detecting:4","Stargazing:4:stargaze","Windsurfing:4:windsurf","Beach Soccer:4","Spikeball:4","Whale Watching:5:whale watch","Sandboarding:5:sandboard"],"fun"]
+];
+
+function packOf(q){
+  if(/planet|noble gas|halogen/.test(q))return 'nature';
+  if(/Olympian|Beatle|Dwarfs|Rushmore|rainbow|Olympics|NHL/.test(q))return 'fun';
+  return 'world';
+}
+const ALL=PROMPTS.map(function(p){return [p[0],p[1],packOf(p[0])];}).concat(MORE);
+const PACKS=[['mix','MIX'],['food','FOOD'],['world','WORLD'],['nature','NATURE'],['fun','FUN']];
+
+const TIERS=[null,
+ {n:'COMMON',d:150,p:100,c:'#8fd8ff'},
+ {n:'UNCOMMON',d:350,p:250,c:'#7dffb0'},
+ {n:'RARE',d:650,p:500,c:'#6aa8ff'},
+ {n:'EPIC',d:1000,p:800,c:'#c77dff'},
+ {n:'LEGENDARY',d:1500,p:1200,c:'#ffd34e'}];
+
+const ZONES=[[0,'Sunlight Zone'],[200,'Twilight Zone'],[1000,'Midnight Zone'],[4000,'Abyssal Zone'],[6000,'Hadal Zone']];
+const LANDMARKS=[[330,'the Eiffel Tower is tall'],[828,'the Burj Khalifa is tall'],[2000,'a sperm whale dives'],[3800,'the Titanic wreck lies'],[8849,'Mount Everest is tall'],[10935,'the Challenger Deep, the deepest point on Earth']];
+const MAXD=10935,FLOOR=MAXD+60,QTIME=25,NPROMPT=7,PXM=0.4;
+
+/* ================= helpers ================= */
+const $=id=>document.getElementById(id);
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;};
+const fmt=n=>Math.floor(n).toLocaleString('en-US');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hsl=(h,s,l,a)=>'hsla('+Math.round(h)+','+s+'%,'+l+'%,'+(a===undefined?1:a)+')';
+function loadBest(){try{return parseInt(localStorage.getItem('abyss_px_best')||'0',10)||0;}catch(e){return 0;}}
+function saveBest(v){try{localStorage.setItem('abyss_px_best',String(v));}catch(e){}}
+function hash(s){let h=7;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+function zoneOf(d){let z=ZONES[0][1];for(const m of ZONES){if(d>=m[0])z=m[1];}return z;}
+
+function parseAns(s){
+  const p=s.split(':'),tier=+p[1];
+  return {name:p[0],tier:tier,names:[p[0]].concat((p[2]||'').split(',').filter(Boolean)),depth:TIERS[tier].d+hash(p[0])%50};
+}
+function norm(s){
+  const t=s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().replace(/^the /,'');
+  return t.split(' ').map(function(w){return (w.length>3&&w.endsWith('s')&&!w.endsWith('ss'))?w.slice(0,-1):w;}).join(' ');
+}
+function lev(a,b){
+  if(a===b)return 0;
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  let prev=[];for(let j=0;j<=n;j++)prev[j]=j;
+  for(let i=1;i<=m;i++){
+    const cur=[i];
+    for(let j=1;j<=n;j++){cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));}
+    prev=cur;
+  }
+  return prev[n];
+}
+function matchAnswer(input,prompt){
+  const q=norm(input);if(!q)return null;
+  let best=null,bd=99;
+  for(const a of prompt.answers){
+    for(const nm of a.names){
+      const n=norm(nm),d=lev(q,n),thr=n.length<=4?0:(n.length<=8?1:2);
+      if(d<=thr&&d<bd){bd=d;best=a;}
+    }
+  }
+  return best;
+}
+
+/* ================= audio ================= */
+let AC=null,muted=false;
+function initAudio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;}}
+  if(AC&&AC.state==='suspended'){AC.resume().catch(function(){});}
+}
+function tone(f,d,type,v,to,delay){
+  if(!AC||muted)return;
+  try{
+    const t0=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'square';o.frequency.setValueAtTime(f,t0);
+    if(to)o.frequency.exponentialRampToValueAtTime(to,t0+d);
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v||0.05,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+    o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+0.05);
+  }catch(e){}
+}
+const sfx={
+  ping(){tone(1500,0.9,'sine',0.07,1400);},
+  good(t){const b=440+t*110;tone(b,0.12,'square',0.05);tone(b*1.25,0.12,'square',0.05,null,0.1);tone(b*1.5,0.22,'square',0.05,null,0.2);},
+  bad(){tone(160,0.45,'sawtooth',0.08,55);tone(90,0.5,'square',0.05,40,0.05);},
+  tick(){tone(1000,0.04,'square',0.025);},
+  start(){tone(330,0.1,'square',0.05);tone(494,0.1,'square',0.05,null,0.1);tone(659,0.2,'square',0.05,null,0.2);},
+  win(){[523,659,784,1047].forEach(function(f,i){tone(f,0.3,'square',0.05,null,i*0.13);});}
+};
+
+/* ================= canvas ================= */
+const cv=$('cv'),ctx=cv.getContext('2d'),ov=$('ov'),octx=ov.getContext('2d');
+const dark=document.createElement('canvas'),dctx=dark.getContext('2d');
+let W=0,H=0,DPR=1,scale=3,LW=0,LH=0,subX=0,subY=0;
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  W=window.innerWidth;H=window.innerHeight;
+  scale=clamp(Math.round(W/190),2,4);
+  LW=Math.ceil(W/scale);LH=Math.ceil(H/scale);
+  cv.width=LW;cv.height=LH;dark.width=LW;dark.height=LH;
+  cv.style.width=(LW*scale)+'px';cv.style.height=(LH*scale)+'px';
+  ov.width=Math.floor(W*DPR);ov.height=Math.floor(H*DPR);ov.style.width=W+'px';ov.style.height=H+'px';
+  ctx.imageSmoothingEnabled=false;
+  subX=Math.round(LW*0.4);subY=Math.round(LH*0.6);
+}
+window.addEventListener('resize',resize);resize();
+
+/* pixel primitives (game-pixel units) */
+function R(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h);}
+function E(cx,cy,rx,ry,c){
+  ctx.fillStyle=c;cx=Math.round(cx);cy=Math.round(cy);
+  const ri=Math.max(0,Math.round(ry));
+  for(let y=-ri;y<=ri;y++){
+    const k=ri>0?Math.sqrt(Math.max(0,1-(y*y)/(ri*ri+0.01))):1;
+    const hw=Math.round(rx*k);
+    ctx.fillRect(cx-hw,cy+y,hw*2+1,1);
+  }
+}
+function P(pts,c){
+  ctx.fillStyle=c;
+  let y0=1e9,y1=-1e9;
+  for(let i=0;i<pts.length;i++){y0=Math.min(y0,pts[i][1]);y1=Math.max(y1,pts[i][1]);}
+  y0=Math.round(y0);y1=Math.round(y1);
+  for(let y=y0;y<=y1;y++){
+    const yy=y+.5,xs=[];
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],b=pts[(i+1)%pts.length];
+      if((a[1]<=yy&&b[1]>yy)||(b[1]<=yy&&a[1]>yy)){xs.push(a[0]+(yy-a[1])/(b[1]-a[1])*(b[0]-a[0]));}
+    }
+    xs.sort(function(p,q){return p-q;});
+    for(let i=0;i+1<xs.length;i+=2){
+      const xa=Math.round(xs[i]),xb=Math.round(xs[i+1]);
+      if(xb>xa)ctx.fillRect(xa,y,xb-xa,1);
+    }
+  }
+}
+function glow(x,y,r,col){
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(Math.floor(x-r),Math.floor(y-r),Math.ceil(r*2)+1,Math.ceil(r*2)+1);
+}
+
+/* ================= state ================= */
+const S={mode:'menu',depth:0,target:0,vel:0,t:0,best:loadBest(),run:null,qt:QTIME,zone:'Sunlight Zone',lm:0,shake:0,bubT:0,prop:0,paused:false,tickN:0,pack:'mix',miss:0};
+let creatures=[],bubbles=[],rings=[],snow=[];
+for(let i=0;i<70;i++)snow.push({x:Math.random()*400,y:Math.random()*300,z:Math.random()});
+
+/* ================= creatures ================= */
+function pickType(d){
+  const r=Math.random();
+  if(d<300&&r<.1)return 'kelp';
+  if(d>25&&d<1500&&r<.2)return 'shrimp';
+  const q=Math.random();
+  if(d<200){if(q<.5)return 'fish';if(q<.8)return 'school';if(q<.92)return 'shark';return 'whale';}
+  if(d<1000){if(q<.28)return 'jelly';if(q<.5)return 'fish';if(q<.74)return 'squid';if(q<.9)return 'shark';return 'whale';}
+  if(d<4000){if(q<.3)return 'jelly';if(q<.55)return 'angler';if(q<.78)return 'squid';return 'ghost';}
+  if(d<6000){if(q<.35)return 'ghost';if(q<.65)return 'angler';return 'jelly';}
+  if(q<.5)return 'ghost';if(q<.78)return 'jelly';return 'angler';
+}
+function mk(type,x,wy,dir,d){
+  const c={type:type,x:x,wy:wy,dir:dir,ph:Math.random()*6.28,sp:rand(2,4),h:0,s:5,vx:0,bob:rand(0,6.28)};
+  switch(type){
+    case 'fish':c.s=rand(3,6);c.vx=dir*rand(9,22);c.h=d<200?rand(10,200):rand(0,25);break;
+    case 'shark':c.s=rand(12,16);c.vx=dir*rand(12,22);c.sp=2;break;
+    case 'whale':c.s=rand(20,26);c.vx=dir*rand(6,10);c.sp=1.2;break;
+    case 'jelly':c.s=rand(5,9);c.vx=rand(-3,3);c.dir=1;c.h=d<1000?rand(300,340):rand(170,210);c.sp=rand(2,3);break;
+    case 'squid':c.s=rand(5,8);c.vx=dir*rand(10,18);c.h=d<1000?350:190;c.sp=rand(3,5);break;
+    case 'angler':c.s=rand(5,8);c.vx=dir*rand(5,10);c.sp=2;break;
+    case 'ghost':c.s=rand(5,8);c.vx=dir*rand(5,11);c.sp=rand(2,3);break;
+    case 'shrimp':c.s=3;c.vx=dir*rand(3,8);c.sp=rand(4,6);break;
+    case 'kelp':c.s=rand(14,30);c.vx=0;c.dir=1;break;
+  }
+  return c;
+}
+function spawnOne(initial){
+  const sy=(S.vel>8&&!initial)?LH+rand(10,120):rand(-20,LH+20);
+  const wy=S.depth*PXM+(sy-subY);
+  const d=wy/PXM;
+  if(d<10||d>MAXD-10)return;
+  const type=pickType(d),dir=Math.random()<.5?1:-1;
+  const off=!initial&&S.vel<=8&&Math.random()<.7;
+  const x=off?(dir>0?-40:LW+40):rand(0,LW);
+  if(type==='school'){
+    const h=rand(15,200),vx=dir*rand(12,20),n=5+Math.floor(Math.random()*3);
+    for(let i=0;i<n;i++){const c=mk('fish',x-dir*rand(0,22),wy+rand(-10,10),dir,d);c.s=rand(2,3.5);c.vx=vx*rand(.93,1.07);c.h=h;creatures.push(c);}
+  }else if(type==='kelp'){
+    const c=mk('kelp',Math.random()<.5?rand(3,16):LW-rand(3,16),wy+rand(8,30),1,d);creatures.push(c);
+  }else creatures.push(mk(type,x,wy,dir,d));
+}
+
+const DRAW={
+  fish(c){
+    const s=Math.round(c.s),ry=Math.max(1,Math.round(s*.5)),col=hsl(c.h,65,52),lt=hsl(c.h,50,74),w=Math.sin(c.ph)>0?1:0;
+    P([[-s+1,0],[-s-3,-ry-w],[-s-3,ry-w]],col);
+    E(0,0,s,ry,col);E(0,Math.min(ry,1),Math.max(1,s-1),0,lt);
+    R(s-2,-1,1,1,'#fff');
+  },
+  shark(c){
+    const s=Math.round(c.s),ry=Math.round(s*.28),w=Math.round(Math.sin(c.ph)*2);
+    P([[-s+2,0],[-s-5,-6+w],[-s-2,0],[-s-5,6+w]],'#5d7283');
+    E(0,0,s,ry,'#6b7f90');E(1,Math.round(ry*.6),s-2,Math.max(1,Math.round(ry*.4)),'#d8e6ee');
+    P([[0,-ry],[-6,-ry-6],[-7,-ry+1]],'#5d7283');
+    R(s-4,-2,2,2,'#101820');R(s-9,0,1,3,'#4a5d6c');
+  },
+  whale(c){
+    const s=Math.round(c.s),ry=Math.round(s*.34),w=Math.round(Math.sin(c.ph)*2);
+    P([[-s+3,-2],[-s-5,-3+w],[-s-11,-9+w],[-s-8,0+w],[-s-11,8+w],[-s-5,3+w],[-s+3,3]],'#34506c');
+    E(0,0,s,ry,'#3c5a79');E(2,Math.round(ry*.55),s-4,Math.max(2,Math.round(ry*.4)),'#9db8cc');
+    P([[5,ry-2],[-3,ry+6],[-1,ry-2]],'#2d4560');
+    R(s-6,-2,2,2,'#0b1622');
+  },
+  jelly(c){
+    const s=Math.round(c.s),p=Math.sin(c.ph),rx=s+Math.round(p),ry=Math.max(3,Math.round(s*.7-p));
+    const col=hsl(c.h,80,66,.6);
+    ctx.fillStyle=col;
+    for(let y=-ry;y<=0;y++){const hw=Math.round(rx*Math.sqrt(Math.max(0,1-(y*y)/(ry*ry+.01))));ctx.fillRect(-hw,y,hw*2+1,1);}
+    R(-rx+2,-ry+1,2,1,hsl(c.h,90,88,.7));
+    ctx.fillStyle=hsl(c.h,80,72,.55);
+    for(let k=-2;k<=2;k++){
+      const x0=Math.round(k*rx/2.6);
+      for(let j=1;j<=Math.round(s*1.4);j++){ctx.fillRect(x0+Math.round(Math.sin(c.ph*.9+j*.7+k)*1.2),j,1,1);}
+    }
+  },
+  squid(c){
+    const s=Math.round(c.s),col=hsl(c.h,60,45);
+    for(let k=-1;k<=2;k++){for(let j=0;j<5;j++){R(s+j,k*1.3+Math.round(Math.sin(c.ph+j+k)),1,1,hsl(c.h,55,40));}}
+    E(0,0,s,3,col);
+    P([[-s+1,0],[-s-3,-3+Math.round(Math.sin(c.ph))],[-s-1,0],[-s-3,3+Math.round(Math.sin(c.ph))]],col);
+    R(s-3,-2,2,2,'#fff');R(s-2,-2,1,1,'#000');
+  },
+  angler(c){
+    const s=Math.round(c.s),ry=Math.round(s*.8);
+    P([[-s+1,0],[-s-4,-4],[-s-4,4]],'#2b2233');
+    E(0,0,s,ry,'#2b2233');
+    for(let k=0;k<4;k++)R(s-1-k*2,Math.round(ry*.35),1,2,'#eee');
+    R(s-3,-Math.round(ry*.5),3,3,'#fff');R(s-2,-Math.round(ry*.5)+1,1,1,'#111');
+    const lx=s+4,ly=-ry-3+Math.round(Math.sin(c.ph));
+    R(Math.round(s*.4),-ry,1,1,'#554');R(Math.round(s*.7),-ry-1,1,1,'#554');R(s,-ry-2,1,1,'#554');R(lx-2,ly+1,3,1,'#554');
+    R(lx,ly,2,2,'#ffe9a0');
+  },
+  ghost(c){
+    const s=Math.round(c.s),w=Math.round(Math.sin(c.ph)*1.5);
+    P([[-s+1,0],[-s-4,-3+w],[-s-4,3+w]],'rgba(205,235,235,.5)');
+    E(0,0,s,Math.max(2,Math.round(s*.32)),'rgba(205,235,235,.55)');
+    R(s-3,-1,2,2,'rgba(15,35,45,.9)');
+  },
+  shrimp(c){
+    const w=Math.round(Math.sin(c.ph));
+    E(0,0,3,2,'#ff4466');E(-3,1,2,1,'#e0304f');R(-6,2+w,2,1,'#ff4466');
+    R(3,-1,1,1,'#fff');R(4,-3,1,1,'#ff7a90');R(5,-4,1,1,'#ff7a90');R(4,-4,1,1,'#ff7a90');
+    R(-1,3,1,2,'#ff7a90');R(1,3,1,2,'#ff7a90');
+  },
+  kelp(c){
+    const n=Math.round(c.s/2);
+    for(let i=0;i<n;i++){
+      const x=Math.round(Math.sin(c.ph*.5+i*.45)*2),y=-i*2;
+      R(x-1,y,3,2,i%2?'#1f6b4a':'#2a8c5a');
+      if(i%3===1)R(x+(i%2?2:-3),y,2,1,'#2a8c5a');
+    }
+  }
+};
+const GLOW={
+  jelly(c){glow(0,0,c.s*2.3,hsl(c.h,100,62,.35));},
+  angler(c){const s=Math.round(c.s),ry=Math.round(s*.8);glow(s+5,-ry-3,s*2.2,'rgba(255,230,140,.85)');},
+  squid(c){if(c.h<300){glow(0,0,c.s*1.6,hsl(190,100,60,.22));}},
+  ghost(c){glow(c.s*.7,0,c.s*1.1,'rgba(140,255,255,.55)');},
+  shrimp(c){glow(0,0,6,'rgba(255,80,110,.25)');}
+};
+
+/* ================= background / world ================= */
+const STOPS=[[0,[88,200,236]],[100,[24,140,200]],[200,[12,96,160]],[600,[8,56,108]],[1000,[6,34,78]],[2000,[4,20,52]],[4000,[3,12,32]],[6000,[2,8,22]],[11000,[1,4,12]]];
+function colorAt(d){
+  if(d<=0)return STOPS[0][1];
+  for(let i=1;i<STOPS.length;i++){
+    if(d<=STOPS[i][0]){const a=STOPS[i-1],b=STOPS[i],f=(d-a[0])/(b[0]-a[0]);return [0,1,2].map(function(k){return a[1][k]+(b[1][k]-a[1][k])*f;});}
+  }
+  return STOPS[STOPS.length-1][1];
+}
+const q7=v=>Math.max(0,Math.min(255,Math.round(v/6)*6));
+function cloud(x,y,s){
+  E(x,y,s*1.4,s*.5,'#e6f4ff');E(x+s*.8,y-s*.4,s*.9,s*.45,'#f6fbff');E(x-s*.9,y-s*.1,s*.8,s*.4,'#f6fbff');
+  E(x,y+Math.round(s*.3),s*1.3,Math.max(1,s*.2),'#bcdcf2');
+}
+function drawBackground(){
+  const wl=Math.round(subY-S.depth*PXM);
+  const start=wl-3*Math.ceil((wl+3)/3);
+  for(let y=start;y<LH;y+=3){
+    if(y+3<=wl){
+      const f=clamp((y-start)/Math.max(30,wl-start),0,1);
+      R(0,y,0,0,'#000');
+      ctx.fillStyle='rgb('+q7(63+f*130)+','+q7(158+f*70)+','+q7(224+f*25)+')';
+      ctx.fillRect(0,y,LW,3);
+    }else{
+      const d=Math.max(0,S.depth+(y+1.5-subY)/PXM),c=colorAt(d);
+      ctx.fillStyle='rgb('+q7(c[0])+','+q7(c[1])+','+q7(c[2])+')';
+      ctx.fillRect(0,y,LW,3);
+    }
+  }
+  if(wl>-40){
+    if(wl>50){
+      glow(LW*.82,Math.max(16,wl*.4),26,'rgba(255,240,170,.55)');
+      E(LW*.82,Math.max(16,wl*.4),8,8,'#ffe98a');
+    }
+    for(let i=0;i<4;i++){
+      const cx=((S.t*4+i*LW/3.2)%(LW+90))-45,cy=wl*(.18+.17*i);
+      if(cy<wl-10&&cy>6)cloud(cx,cy,5+i%2*2);
+    }
+    /* ship */
+    const bx=Math.round(LW*.16),by=wl+Math.round(Math.sin(S.t*1.2));
+    if(by>-20){
+      P([[bx-13,by-3],[bx+13,by-3],[bx+8,by+4],[bx-8,by+4]],'#7a2a2a');
+      R(bx-13,by-4,26,2,'#c9d4dc');R(bx-5,by-11,10,7,'#e8eef2');R(bx-3,by-9,3,3,'#3a6a99');R(bx+1,by-9,3,3,'#3a6a99');
+      R(bx+3,by-15,3,4,'#cc3344');R(bx-1,by-20,1,9,'#444');R(bx,by-20,5,3,'#ff4f7e');
+      ctx.fillStyle='rgba(30,140,200,.55)';ctx.fillRect(bx-14,by+1,30,6);
+    }
+    ctx.fillStyle='rgba(255,255,255,.85)';
+    for(let x=0;x<LW;x++){ctx.fillRect(x,wl+Math.round(Math.sin(x*.28+S.t*2.2)),1,1);}
+    ctx.fillStyle='rgba(255,255,255,.3)';
+    for(let x=0;x<LW;x+=2){ctx.fillRect(x,wl+3+Math.round(Math.sin(x*.2+S.t*1.6)),2,1);}
+    ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(0,wl+1,LW,9);
+  }
+  if(S.depth<600){
+    const a=.16*(1-S.depth/600);
+    for(let i=0;i<5;i++){
+      const x0=LW*(i/4.4)+Math.sin(S.t*.35+i*1.7)*12-10,y0=Math.max(0,wl);
+      P([[x0,y0],[x0+14,y0],[x0-45,LH],[x0-75,LH]],'rgba(255,255,255,'+a.toFixed(3)+')');
+    }
+  }
+}
+function floorY(){return Math.round(subY+(FLOOR-S.depth)*PXM);}
+function drawSeabed(){
+  const fy=floorY();if(fy>LH+10)return;
+  for(let x=0;x<LW;x++){
+    const h=fy+Math.round(Math.sin(x*.07)*3+Math.sin(x*.19)*2);
+    R(x,h,1,LH-h+2,'#262a36');R(x,h,1,1,'#3a4050');R(x,h+4,1,LH,'#181b25');
+  }
+  for(let i=0;i<7;i++){const x=(i*61+17)%Math.max(LW,100);E(x,fy+3+(i%3)*3,6+i%4*2,3+i%3,'#1b1e29');}
+}
+function drawSeabedGlow(){
+  const fy=floorY();if(fy>LH+10)return;
+  for(let i=0;i<14;i++){
+    const x=(i*29+8)%Math.max(LW,100),y=fy+4+(i*7)%16,p=.6+.4*Math.sin(S.t*2+i);
+    glow(x,y,5,i%2?'rgba(90,255,230,'+(.4*p)+')':'rgba(255,140,220,'+(.4*p)+')');
+    R(x,y-1,1,1,i%2?'#aaffee':'#ffc0ee');
+  }
+  for(let i=0;i<5;i++){const x=(i*47+30)%Math.max(LW,100);R(x,fy-9,1,10,'#ff7a7a');R(x,fy-10,2,2,'#ffb0b0');}
+}
+
+/* submarine (centre 0,0, faces right) */
+function drawSub(){
+  const bob=Math.round(Math.sin(S.t*1.6)*1.5);
+  ctx.save();ctx.translate(subX,subY+bob);
+  if(S.depth>40){
+    const a=clamp((S.depth-40)/400,0,1)*.2+.05;
+    ctx.globalCompositeOperation='lighter';
+    P([[22,-1],[150,-44],[150,44],[22,1]],'rgba(255,248,200,'+a.toFixed(3)+')');
+    ctx.globalCompositeOperation='source-over';
+  }
+  P([[-17,-1],[-24,-9],[-20,-9],[-14,-3]],'#b07d00');
+  P([[-17,1],[-24,9],[-20,9],[-14,3]],'#b07d00');
+  R(-1,-17,1,6,'#6a4a00');R(-1,-17,5,1,'#6a4a00');
+  R(-5,-12,12,6,'#d99a00');R(-4,-11,10,4,'#ffd34e');R(0,-10,3,2,'#bfe9ff');
+  E(0,0,21,8,'#c88f00');E(0,-1,20,6,'#f2b800');E(0,-3,17,3,'#ffd34e');
+  for(let k=-1;k<=1;k++){E(k*10,0,3,3,'#5a3d00');E(k*10,0,2,2,'#9fdcff');R(k*10-1,-1,1,1,'#ffffff');}
+  R(21,-1,2,2,'#fff6c8');
+  R(-25,-1,3,2,'#6a4a00');
+  const ph=Math.abs(Math.sin(S.prop));
+  R(-27,-Math.round(2+ph*5),2,Math.round(4+ph*10),'#4d3600');
+  ctx.restore();
+}
+
+/* ================= HUD / UI ================= */
+const LS=['','COMMON','UNCOMMON','RARE','EPIC','LEGENDARY'];
+function setHud(){
+  $('dv').textContent=fmt(S.depth)+'m';
+  $('sv').textContent=fmt(S.run?S.run.score:0);
+}
+function buildSquares(){
+  const box=$('sq');box.innerHTML='';
+  for(let i=0;i<NPROMPT;i++){
+    const el=document.createElement('i');
+    if(S.run){
+      if(i<S.run.results.length){el.className='done';const r=S.run.results[i];el.style.background=r.tier?TIERS[r.tier].c:'#3a2230';}
+      else if(i===S.run.i&&S.mode!=='over')el.className='cur';
+    }
+    box.appendChild(el);
+  }
+  $('plab').textContent='Prompt '+Math.min(NPROMPT,(S.run?S.run.i:0)+1)+' of '+NPROMPT;
+}
+let toastTimer=0;
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('show');},2400);
+}
+function floatGain(txt){
+  const g=$('gain');g.textContent=txt;g.style.left=Math.round(subX*scale+20)+'px';g.style.top=Math.round(subY*scale-40)+'px';
+  g.classList.remove('go');void g.offsetWidth;g.classList.add('go');
+}
+
+/* ================= game flow ================= */
+const input=$('ans'),goBtn=$('go');
+function setGo(txt,dis){goBtn.firstElementChild.textContent=txt;goBtn.disabled=!!dis;}
+
+function startGame(){
+  initAudio();sfx.start();
+  document.body.classList.remove('menu','over');
+  $('menu').classList.remove('on');$('end').classList.remove('on');
+  const pool=ALL.filter(function(p){return S.pack==='mix'||p[2]===S.pack;});
+  const picks=shuffle(pool).slice(0,NPROMPT).map(function(p){return {q:p[0],answers:p[1].map(parseAns)};});
+  S.run={prompts:picks,i:0,score:0,results:[]};
+  S.depth=0;S.target=0;S.vel=0;S.lm=0;S.zone='Sunlight Zone';S.paused=false;
+  creatures=[];bubbles=[];rings=[];
+  for(let i=0;i<12;i++)spawnOne(true);
+  showPrompt();
+}
+function showPrompt(){
+  const r=S.run,p=r.prompts[r.i];
+  S.mode='ask';S.qt=QTIME;S.tickN=QTIME;S.miss=0;
+  $('qlab').textContent='PROMPT '+(r.i+1)+' OF '+NPROMPT;
+  $('qtxt').textContent=p.q;
+  $('qhint').textContent='▼ rarer answers sink deeper · wrong guesses cost 10% each ▼';
+  input.disabled=false;input.readOnly=false;input.value='';
+  setGo('DIVE',false);
+  buildSquares();setHud();
+  $('tbar').style.transform='scaleX(1)';$('tbar').classList.remove('low');$('dial').classList.remove('low');
+  setTimeout(function(){try{input.focus();}catch(e){}},50);
+}
+function submitAnswer(timeout){
+  if(S.mode!=='ask')return;
+  const r=S.run,p=r.prompts[r.i],val=input.value.trim(),a=matchAnswer(val,p),left=Math.max(0,S.qt);
+  if(!a&&!timeout){
+    if(!val){try{input.focus();}catch(e){}return;}
+    S.miss++;S.shake=2;sfx.bad();
+    const f=$('flash');f.classList.add('on');setTimeout(function(){f.classList.remove('on');},90);
+    $('qhint').textContent='✘ "'+val+'" isn\'t on the list. Try again! ('+S.miss+(S.miss===1?' miss':' misses')+', rarer = deeper)';
+    input.value='';try{input.focus();}catch(e){}
+    return;
+  }
+  input.blur();input.readOnly=true;
+  let html='',hint='';
+  const others=p.answers.filter(function(x){return x!==a;}).sort(function(x,y){return y.depth-x.depth;}).slice(0,3).map(function(x){return x.name;});
+  if(a){
+    const mult=Math.max(0.4,1-0.1*S.miss),gain=Math.max(0,Math.min(Math.round(a.depth*mult),MAXD-S.target)),pts=Math.round((TIERS[a.tier].p+Math.floor(left)*4)*mult);
+    S.target+=gain;r.score+=pts;
+    r.results.push({q:p.q,ans:a.name,tier:a.tier,depth:gain,pts:pts});
+    S.mode='sinking';
+    html='<span class="ok">✔ '+esc(a.name.toUpperCase())+'</span><small style="color:'+TIERS[a.tier].c+'">'+LS[a.tier]+' · +'+fmt(gain)+' m · +'+fmt(pts)+' pts'+(S.miss?' · '+S.miss+(S.miss===1?' miss':' misses')+' (-'+Math.round((1-mult)*100)+'%)':'')+'</small>';
+    hint=others.length?'DEEPER OR OTHER: '+others.join(' · '):'';
+    rings.push({r:6,a:1});sfx.good(a.tier);setTimeout(sfx.ping,260);
+    floatGain('+'+fmt(gain)+'m');
+    setGo('...',true);
+  }else{
+    r.results.push({q:p.q,ans:val||'—',tier:0,depth:0,pts:0});
+    S.mode='reveal';S.shake=3;
+    html='<span class="bad">✘ '+esc(val?val.toUpperCase():'TIME UP')+'</span><small style="color:#ff9aa6">'+(val?'NOT ON THE LIST':'NO ANSWER')+' · +0 m</small>';
+    hint='ANSWERS WERE: '+p.answers.slice().sort(function(x,y){return y.depth-x.depth;}).slice(0,4).map(function(x){return x.name;}).join(' · ');
+    sfx.bad();const f=$('flash');f.classList.add('on');setTimeout(function(){f.classList.remove('on');},110);
+    setGo(r.i>=NPROMPT-1?'RESULTS':'NEXT',false);
+  }
+  $('qtxt').innerHTML=html;$('qhint').textContent=hint;
+  buildSquares();setHud();
+}
+function nextPrompt(){
+  if(S.mode!=='reveal')return;
+  S.run.i++;
+  if(S.run.i>=NPROMPT)endGame();else showPrompt();
+}
+function endGame(){
+  S.mode='over';document.body.classList.add('over');
+  input.blur();
+  const d=Math.floor(S.depth),rec=d>S.best;
+  if(rec){S.best=d;saveBest(d);}
+  let lm='';for(const l of LANDMARKS){if(d>=l[0]-1)lm=l[1];}
+  $('etitle').textContent=d>=MAXD-1?'🏆 BOTTOM OF THE OCEAN':'DIVE COMPLETE';
+  $('edepth').textContent=fmt(d)+'m';
+  $('ezone').textContent=zoneOf(d).toUpperCase();
+  $('ebadge').innerHTML=rec&&d>0?'<span class="badge">NEW BEST DEPTH</span>':'';
+  $('ecomp').textContent=lm?'You went deeper than '+lm+'.':'Not even the Eiffel Tower fits in that. Dive again!';
+  $('escore').textContent='SCORE '+fmt(S.run?S.run.score:0)+(rec?'':' · BEST '+fmt(S.best)+'m');
+  const rows=$('erows');rows.innerHTML='';
+  (S.run?S.run.results:[]).forEach(function(r){
+    const row=document.createElement('div');row.className='er';
+    const sq=document.createElement('i');sq.style.background=r.tier?TIERS[r.tier].c:'#5a2a38';
+    const mid=document.createElement('span');mid.textContent=r.ans;
+    const sm=document.createElement('small');sm.textContent=r.q.replace(/^Name (an? |one of the )?/,'');mid.appendChild(sm);
+    const em=document.createElement('em');em.textContent='+'+fmt(r.depth)+'m';
+    row.appendChild(sq);row.appendChild(mid);row.appendChild(em);rows.appendChild(row);
+  });
+  $('end').classList.add('on');
+  if(d>=MAXD-1)sfx.win();
+  buildSquares();
+}
+function toMenu(){
+  S.mode='menu';S.depth=0;S.target=0;S.vel=0;S.run=null;S.paused=false;
+  creatures=[];bubbles=[];rings=[];for(let i=0;i<8;i++)spawnOne(true);
+  document.body.classList.add('menu');document.body.classList.remove('over');
+  $('end').classList.remove('on');$('menu').classList.add('on');$('modal').classList.remove('on');
+  $('bestv').textContent=fmt(S.best)+' m';
+  buildSquares();setHud();
+}
+
+(function(){
+  const box=$('packs');
+  PACKS.forEach(function(p){
+    const b=document.createElement('button');b.className='chip'+(p[0]===S.pack?' on':'');b.textContent=p[1];
+    b.addEventListener('click',function(){S.pack=p[0];[].forEach.call(box.children,function(c){c.classList.toggle('on',c===b);});});
+    box.appendChild(b);
+  });
+})();
+$('begin').addEventListener('click',startGame);
+$('again').addEventListener('click',function(){startGame();});
+$('copy').addEventListener('click',function(){
+  const d=Math.floor(S.depth),txt='Serhii\'s Dive Quizz\n'+fmt(d)+' m deep · score '+fmt(S.run?S.run.score:0)+'\n'+(S.run?S.run.results.map(function(r){return r.tier?['','🟦','🟩','🟪','🟣','🟨'][r.tier]:'⬛';}).join(''):'');
+  const b=$('copy').firstElementChild;
+  try{navigator.clipboard.writeText(txt).then(function(){b.textContent='COPIED!';},function(){b.textContent='COPY FAILED';});}catch(e){b.textContent='COPY FAILED';}
+  setTimeout(function(){b.textContent='COPY RESULT';},1600);
+});
+$('bar').addEventListener('submit',function(e){
+  e.preventDefault();initAudio();
+  if(S.mode==='ask')submitAnswer(false);else if(S.mode==='reveal')nextPrompt();
+});
+$('mute').addEventListener('click',function(){muted=!muted;$('mute').firstElementChild.textContent=muted?'×':'♪';initAudio();});
+
+function openModal(html){$('mbody').innerHTML=html;$('modal').classList.add('on');S.paused=true;}
+function closeModal(){$('modal').classList.remove('on');S.paused=false;if(S.mode==='ask'){try{input.focus();}catch(e){}}}
+const HOWTO='<h3>HOW TO PLAY</h3><p>You get 7 prompts, 25 seconds each. Type <b>one</b> answer that fits the prompt.</p><p>Common answers sink you only a little. <b>Rare answers sink you much deeper</b>, so think past the obvious ones. A wrong answer or running out of time gives 0 m.</p><p>Typos are forgiven. Try to beat your best depth and reach the Challenger Deep at 10,935 m.</p>';
+$('how').addEventListener('click',function(){openModal(HOWTO+'<button class="px mbtn" id="mclose" style="--c:#3de0ff;--bg:#071a38"><span class="in">GOT IT</span></button>');$('mclose').onclick=closeModal;});
+$('menubtn').addEventListener('click',function(){
+  if(S.mode==='menu'){openModal(HOWTO+'<button class="px mbtn" id="mclose" style="--c:#3de0ff;--bg:#071a38"><span class="in">GOT IT</span></button>');$('mclose').onclick=closeModal;return;}
+  openModal('<h3>PAUSED</h3><button class="px mbtn" id="mres" style="--c:#3de0ff;--bg:#071a38"><span class="in">RESUME</span></button><button class="px mbtn" id="mend" style="--c:#ff5f8a;--bg:#3a1226"><span class="in">END DIVE</span></button><button class="px mbtn" id="mhow" style="--c:#4a6580;--bg:#142234"><span class="in">HOW TO PLAY</span></button>');
+  $('mres').onclick=closeModal;
+  $('mend').onclick=function(){$('modal').classList.remove('on');S.paused=false;if(S.mode==='ask'||S.mode==='reveal'||S.mode==='sinking'){S.target=S.depth;endGame();}};
+  $('mhow').onclick=function(){openModal(HOWTO+'<button class="px mbtn" id="mclose" style="--c:#3de0ff;--bg:#071a38"><span class="in">BACK</span></button>');$('mclose').onclick=closeModal;};
+});
+
+/* ================= update ================= */
+function update(dt){
+  if(S.paused)dt=0;
+  S.t+=dt;
+  const diff=S.target-S.depth;
+  if(diff>0.05){
+    const v=clamp(diff*1.0,70,500),step=Math.min(diff,v*dt);
+    S.depth+=step;S.vel=dt>0?step/dt:0;
+  }else{S.vel*=0.85;if(S.vel<1)S.vel=0;}
+  S.prop+=(6+S.vel*.04)*dt;
+  S.shake=Math.max(0,S.shake-dt*10);
+
+  if(S.mode!=='menu'){
+    const z=zoneOf(S.depth);
+    if(z!==S.zone){S.zone=z;toast('ENTERING THE '+z.toUpperCase());}
+    while(S.lm<LANDMARKS.length&&S.depth>=LANDMARKS[S.lm][0]-0.5){
+      if(LANDMARKS[S.lm][0]<MAXD)toast('DEEPER THAN '+LANDMARKS[S.lm][1].toUpperCase()+'!');
+      S.lm++;
+    }
+  }
+  if(S.mode==='ask'){
+    S.qt-=dt;
+    const n=Math.ceil(Math.max(0,S.qt));
+    if(n!==S.tickN){S.tickN=n;if(n<=5&&n>0)sfx.tick();}
+    const frac=clamp(S.qt/QTIME,0,1);
+    $('dial').style.setProperty('--p',(frac*100).toFixed(1));
+    $('dn').textContent=n;
+    $('tbar').style.transform='scaleX('+frac.toFixed(3)+')';
+    const low=S.qt<=5;$('tbar').classList.toggle('low',low);$('dial').classList.toggle('low',low);
+    if(S.qt<=0)submitAnswer(true);
+  }else if(S.mode==='sinking'){
+    if(S.target-S.depth<0.5){
+      S.mode='reveal';setGo(S.run.i>=NPROMPT-1?'RESULTS':'NEXT',false);
+    }
+  }
+  S.bubT-=dt;
+  if(S.bubT<=0&&dt>0){
+    S.bubT=S.vel>20?0.05:0.18;
+    bubbles.push({x:subX-26,y:subY+rand(-3,3),vy:rand(8,20),ph:rand(0,6.28)});
+  }
+  for(const b of bubbles){b.y-=(b.vy+S.vel*PXM*.6)*dt;b.x+=Math.sin(S.t*3+b.ph)*3*dt-5*dt;}
+  bubbles=bubbles.filter(function(b){return b.y>-10&&b.y>subY-130;});
+  for(const r of rings){r.r+=110*dt;r.a-=dt*.7;}
+  rings=rings.filter(function(r){return r.a>0;});
+  for(const p of snow){
+    p.y+=(-S.vel*PXM*p.z*.9+2*p.z)*dt;p.x+=Math.sin(S.t*.5+p.z*9)*2*dt;
+    if(p.y<-3){p.y=LH+3;p.x=Math.random()*LW;}
+    if(p.y>LH+3){p.y=-3;p.x=Math.random()*LW;}
+    if(p.x<-3)p.x=LW+3;if(p.x>LW+3)p.x=-3;
+  }
+  const N=LW<260?9:14;let g=0;
+  while(creatures.length<N&&g++<3)spawnOne(false);
+  const wd=S.depth*PXM;
+  for(const c of creatures){c.x+=c.vx*dt;c.ph+=dt*c.sp;}
+  creatures=creatures.filter(function(c){const sy=subY+c.wy-wd;return sy>-120&&sy<LH+160&&c.x>-90&&c.x<LW+90;});
+  setHud();
+}
+
+/* ================= render ================= */
+function render(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalCompositeOperation='source-over';
+  ctx.imageSmoothingEnabled=false;
+  drawBackground();
+  drawSeabed();
+  const wd=S.depth*PXM;
+  for(const c of creatures){
+    const sy=Math.round(subY+c.wy-wd+(c.type==='kelp'?0:Math.sin(S.t*.9+c.bob)*2));
+    if(sy<-60||sy>LH+60)continue;
+    ctx.save();ctx.translate(Math.round(c.x),sy);ctx.scale(c.dir,1);DRAW[c.type](c);ctx.restore();
+  }
+  const sa=.25+clamp(S.depth/800,0,1)*.5;
+  for(const p of snow){ctx.fillStyle='rgba(205,232,255,'+(sa*(.3+p.z*.7)).toFixed(2)+')';ctx.fillRect(Math.round(p.x),Math.round(p.y),1,1);}
+  const dk=clamp((S.depth-100)/1300,0,.9);
+  if(dk>0.01){
+    dctx.globalCompositeOperation='source-over';dctx.clearRect(0,0,LW,LH);
+    dctx.fillStyle='rgba(0,4,12,'+dk.toFixed(3)+')';dctx.fillRect(0,0,LW,LH);
+    dctx.globalCompositeOperation='destination-out';
+    let g=dctx.createRadialGradient(subX,subY,4,subX,subY,70);
+    g.addColorStop(0,'rgba(0,0,0,.9)');g.addColorStop(1,'rgba(0,0,0,0)');
+    dctx.fillStyle=g;dctx.fillRect(0,0,LW,LH);
+    g=dctx.createLinearGradient(subX+22,0,subX+160,0);
+    g.addColorStop(0,'rgba(0,0,0,.95)');g.addColorStop(1,'rgba(0,0,0,0)');
+    dctx.fillStyle=g;dctx.beginPath();dctx.moveTo(subX+22,subY-2);dctx.lineTo(subX+160,subY-55);dctx.lineTo(subX+160,subY+55);dctx.lineTo(subX+22,subY+2);dctx.closePath();dctx.fill();
+    ctx.drawImage(dark,0,0);
+  }
+  ctx.globalCompositeOperation='lighter';
+  for(const c of creatures){
+    const gf=GLOW[c.type];if(!gf)continue;
+    const sy=Math.round(subY+c.wy-wd+Math.sin(S.t*.9+c.bob)*2);
+    if(sy<-40||sy>LH+40)continue;
+    ctx.save();ctx.translate(Math.round(c.x),sy);ctx.scale(c.dir,1);gf(c);ctx.restore();
+  }
+  drawSeabedGlow();
+  ctx.globalCompositeOperation='source-over';
+  for(const b of bubbles){R(b.x,b.y,2,2,'rgba(220,245,255,.75)');R(b.x+1,b.y+1,1,1,'rgba(150,200,230,.8)');}
+  for(const r of rings){ctx.strokeStyle='rgba(120,255,220,'+clamp(r.a,0,1).toFixed(2)+')';ctx.lineWidth=1;ctx.beginPath();ctx.arc(subX,subY,Math.max(1,r.r),0,6.283);ctx.stroke();}
+  drawSub();
+  if(S.shake>0){const m=Math.round(S.shake);cv.style.transform='translate('+(Math.round(rand(-m,m))*scale)+'px,'+(Math.round(rand(-m,m))*scale)+'px)';}
+  else if(cv.style.transform)cv.style.transform='';
+  drawRuler();
+}
+function drawRuler(){
+  octx.setTransform(DPR,0,0,DPR,0,0);octx.clearRect(0,0,W,H);
+  if(S.mode==='menu')return;
+  const x=W-12,k=PXM*scale,ypx=function(d){return (subY+(d-S.depth)*PXM)*scale;};
+  const d0=S.depth+(0-subY)/PXM,d1=S.depth+(LH-subY)/PXM;
+  octx.fillStyle='rgba(190,230,255,.28)';octx.fillRect(x-1,Math.max(0,ypx(0)),2,H);
+  octx.font='12px Silkscreen,monospace';octx.textAlign='right';octx.textBaseline='middle';
+  for(let d=Math.ceil(Math.max(0,d0)/50)*50;d<=Math.min(d1,MAXD+50);d+=50){
+    const y=ypx(d),major=d%100===0;
+    octx.fillStyle='rgba(190,230,255,.55)';octx.fillRect(x-(major?14:8),y,major?14:8,2);
+    if(major){octx.fillStyle='rgba(200,235,255,.8)';octx.fillText(d===0?'0m':'-'+fmt(d)+'m',x-20,y);}
+  }
+  if(S.best>0&&S.best>=d0&&S.best<=d1){
+    const y=ypx(S.best);octx.fillStyle='#ffd34e';octx.fillRect(x-26,y,28,2);
+    octx.textAlign='right';octx.fillText('BEST',x-30,y);
+  }
+  const sy=subY*scale;
+  octx.fillStyle='#ff5f8a';octx.beginPath();octx.moveTo(x-6,sy);octx.lineTo(x-20,sy-7);octx.lineTo(x-20,sy+7);octx.closePath();octx.fill();
+}
+
+/* ================= loop ================= */
+for(let i=0;i<8;i++)spawnOne(true);
+$('bestv').textContent=fmt(S.best)+' m';
+buildSquares();setHud();
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  update(dt);render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
